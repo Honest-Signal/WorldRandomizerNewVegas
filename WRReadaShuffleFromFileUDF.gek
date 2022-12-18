@@ -1,0 +1,15 @@
+scn WRReadaShuffleFromFileUDF
+
+begin function { }
+	array_var aResult
+
+	aResult = GetINISection "aShuffle" "RandomizedWorld.ini"
+	foreach (array_var aEntry) <- aResult
+		string_var sKey = aEntry["key"]
+		string_var sEntry = aEntry["value"]
+		aResult[sKey] = StringToRef $sEntry
+	loop		
+
+	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Imported " + $(Ar_Size aResult) + " doors." )
+	WRQuestStart.aShuffle = aResult
+end

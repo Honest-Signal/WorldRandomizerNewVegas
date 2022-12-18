@@ -1,0 +1,21 @@
+scn WeatherStationElevatorDoorScript
+
+begin OnActivate
+
+	if eval IsActionRef player && Ar_HasKey WRQuestStart.aShuffle GetSelf.RefToString
+
+		if (GetObjectiveCompleted VMQ02 5)
+			ShowMessage WeatherStationElevatorMsg
+		elseif (GetObjectiveCompleted VMQHouse2 32) && (GetObjectiveCompleted VMQHouse2 34)
+			ShowMessage WeatherStationElevatorMsg
+		else
+			Activate
+		endif
+
+	else
+
+		Activate
+
+	endif
+
+end

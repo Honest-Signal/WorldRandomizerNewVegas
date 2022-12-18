@@ -1,0 +1,61 @@
+scn WRGetAllDoorsUDF
+
+begin function { }
+	array_var aAllDoors
+
+	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Gathering all doors..." )
+;	WriteStringToFile "WR_all_edges.txt" 0 "graph {%r"
+	array_var aGLTA = Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs
+	aAllDoors = Ar_Construct "Stringmap"
+;	array_var aAlreadyEdge = Ar_Construct "Array"
+	int iIndex = -1
+	while (iIndex += 1) < (Ar_Size aGLTA)
+		ref rDoor = aGLTA[iIndex]
+		ref rLink = rDoor.GetTeleportDoor
+		float fX = rLink.GetDoorTeleportX
+		float fY = rLink.GetDoorTeleportY
+		float fZ = rLink.GetDoorTeleportZ
+		float fRot = rLink.GetDoorTeleportRot
+		ref rParent = rDoor.gpc
+		if rParent == 0
+			rParent = rDoor.gpw
+		endif
+		aAllDoors[rDoor.RefToString] = Ar_List fX fY fZ fRot ;rLink rParent
+		AddFormToFormList WRAllDoors rDoor
+	
+;=======Leaving this stuff here but basically all it does is print out a file that (with modifications) can let you look at the door connections in GraphViz.
+;		if eval (Ar_Find rDoor aAlreadyEdge) != Ar_BadNumericIndex
+;			continue
+;		endif
+;		Ar_Append aAlreadyEdge rDoor
+;		Ar_Append aAlreadyEdge rLink
+;	
+;		string_var sParent = GetEditorID rParent
+;		if eval (sv_length sParent) < 1
+;			sParent = GetFormIdString rParent
+;		endif
+;		ref rParentLink = rLink.gpc
+;		if rParentLink == 0
+;			rParentLink = rLink.gpw
+;		endif
+;		string_var sParentLink = GetEditorID rParentLink
+;		if eval (sv_length sParentLink) < 1
+;			sParentLink = GetFormIdString rParentLink
+;		endif
+;		
+;		string_var sTooltip = GetFormIdString rDoor + "|" + GetFormIdString rLink
+;		string_var sEdge = sv_construct "    %q%z%q -- %q%z%q tooltip=%q%z%q" sParent, sParentLink, sTooltip
+;		int iLock = 0
+;		if eval rDoor.GetLocked || rLink.GetLocked
+;			sEdge = $sEdge + ", color=red"
+;		endif
+;		PrintF "WR_all_edges.txt" $sEdge + "]"
+	loop
+
+	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Done." )
+;	PrintF "WR_all_edges.txt" "}"
+;	iDisconnectivity = Call WRConnectivityUDF
+	
+	WRQuestStart.aAllDoors = aAllDoors
+
+end

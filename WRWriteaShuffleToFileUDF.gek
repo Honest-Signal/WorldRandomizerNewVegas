@@ -1,0 +1,18 @@
+scn WRWriteaShuffleToFileUDF
+
+string_var sFileName
+
+begin function { }
+
+	array_var aShuffle = GetArrayVar aShuffle WRQuestStart
+	RemoveINISection "aShuffle" "RandomizedWorld.ini"
+	foreach (array_var aEntry) <- aShuffle
+		string_var sKey = aEntry["key"]
+		ref rValue = aEntry["value"]
+		string_var srValue = rValue.RefToString ;Didn't like the name sValue for some reason????
+		string_var sKeystring = "aShuffle/" + $sKey
+		SetINIString $sKeystring $srValue "RandomizedWorld.ini"
+	loop
+	
+	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Created RandomizedWorld.ini." )
+end

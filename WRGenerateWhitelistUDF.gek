@@ -1,0 +1,37 @@
+scn WRGenerateWhitelistUDF
+
+; This function generates an array of doors that shouldn't be included in randomization. 
+; It's a script so that the mod can run without requiring every DLC or other mod necessarily.
+; Doors can be added via the formlist WRWhitelistedDoors without recompiling this script (you might want this for an unsupported mod, for instance)
+; FalloutNV.esm's whitelist is in the formlist by default.
+
+begin function { }
+
+	array_var aWhitelist = GetListForms WRWhitelistedDoors
+	
+	int iIndex = -1
+	while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
+		if eval WRQuestStart.aOptionsSelected[iIndex]
+			int iModIndex = WRQuestStart.aOptions[iIndex]
+			string_var sModName = GetNthModName iModIndex
+	
+;========WHITELIST BEGINS
+			if eval sModName == "DeadMoney.esm"
+				Ar_Append aWhitelist (GFFM "DeadMoney.esm" "139DB") 		;Return door from the Sierra Madre
+				Ar_Append aWhitelist (GFFM "DeadMoney.esm" "29EF")		;NVDLC01VaultElevatorREF -- Sierra Madre vault elevator door
+			elseif eval sModName == "HonestHearts.esm"
+			elseif eval sModName == "LonesomeRoad.esm"
+				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "8481") 	;TempleEntrance -- DCC2 switches to this if disabled
+				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "3D1B")	;TempleExit -- DCC1 switches to this if disabled
+				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "39F3")	;NVDLC04Silo2DoorREFDUPLICATE000 -- CB7D switches to this if disabled
+				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "29AD")	;NVDLC04Silo02StartDoorREF -- CB7A switches to this if disabled
+			elseif eval sModName == "OldWorldBlues.esm"
+				ListAddForm WRProblemDoors (GFFM "OldWorldBlues.esm" "38C9") ;Sink balcony door, because it's a one-way
+			endif
+;========WHITELIST ENDS... FOR NOW
+
+		endif
+	loop
+
+	WRQuestStart.aWhitelist = aWhitelist
+end

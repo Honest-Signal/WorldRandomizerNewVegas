@@ -1,0 +1,17 @@
+scn WRProblemSolverSCRIPT
+
+begin ScriptEffectStart
+	ref rDoor = WRQuestStart.rRecentDoor
+	if rDoor != 0
+		ref rLink = rDoor.GetTeleportDoor
+		float fX = (rLink.GetDoorTeleportX) - (rDoor.GetPos X)
+		float fY = (rLink.GetDoorTeleportY) - (rDoor.GetPos Y)
+		float fZ = (rLink.GetDoorTeleportZ) - (rDoor.GetPos Z)
+		player.moveto rDoor fX fY fZ
+		WRQuestStart.rRecentDoor = 0
+	else
+		MessageEx "There's no door saved in the Problem Solver."
+	endif
+
+	player.additem WRProblemSolver 1 1
+end

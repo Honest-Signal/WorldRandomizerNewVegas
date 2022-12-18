@@ -1,0 +1,259 @@
+scn WRSetDoorTeleportUDF
+
+ref fromDoor
+ref toDoor
+float fX
+float fY
+float fZ
+float fRot
+
+begin function { toDoor }
+	ref rSelf = GetSelf
+	string_var strFromDoor = GetFormIDString rSelf
+	string_var strToDoor = GetFormIDString toDoor
+
+	int iModDoor = 0
+
+	;From door dealings
+	if eval strFromDoor == "000F3C5F"
+		int iYUPIndex = Call WRGetYUPIndexUDF
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64ED"
+		endif
+	elseif eval strFromDoor == "0016A9B8"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EE"
+		endif
+	elseif eval strFromDoor == "000F3C5E"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EC"
+		endif
+	elseif eval strFromDoor == "0016A9B2"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EB"
+		endif
+	elseif eval strFromDoor == "00152C02" ;RSCharlieDoor
+		if rSelf.GetDisabled
+			let fromDoor := RSCharlieDoorDestroyed
+		endif
+	elseif eval strFromDoor == "001093DB" ;NellisHangar1bDoor1
+		if rSelf.GetDisabled
+			let fromDoor := rSelf.GetParentRef ;NellisHangar1aDoor1
+		endif
+	elseif eval strFromDoor == "001093DC" ;Hangar1bDoor2
+		if rSelf.GetDisabled
+			let fromDoor := rSelf.GetParentRef ;Hangar1aDoor2
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "CB7D" ;NVDLC04Road02ToSilo02DoorREF
+		if rSelf.GetDisabled
+			let fromDoor := GetFormFromMod "LonesomeRoad.esm" "39F3" ;NVDLC04Silo2DoorREFDUPLICATE000 
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "CB7A" ;NVDLC04Silo02ToRoad02DoorREF
+		if rSelf.GetDisabled
+			let fromDoor := GetFormFromMod "LonesomeRoad.esm" "29AD" ;NVDLC04Silo02StartDoorREF
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "DCC2"
+		if rSelf.GetDisabled
+			let fromDoor := rSelf.GetParentRef ;TempleEntrance
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "DCC1"
+		if rSelf.GetDisabled
+			let fromDoor := rSelf.GetParentRef ;TempleExit
+		endif
+	elseif eval strFromDoor == "00133931" ;VHDCheckpointExtDoorWestREF
+		if rSelf.GetDisabled
+			iModDoor = 1
+		else
+			iModDoor = -1
+		endif
+	elseif eval strFromDoor == "0013C8C9" ;VHDCheckpointEastDoor
+		if rSelf.GetDisabled
+			iModDoor = 1
+		else
+			iModDoor = -1
+		endif
+	elseif eval strFromDoor == "00168DB5" ;v34NorthTeleportDoor
+		if rSelf.GetDisabled
+			iModDoor = 1
+		else
+			iModDoor = -1
+		endif
+	elseif eval strFromDoor == "00136B5F" ;SVElevatorDoorVault
+		if eval GetObjectiveCompleted VMQ02 5 || ((GetObjectiveCompleted VMQHouse2 32) && (GetObjectiveCompleted VMQHouse2 34))
+			iModDoor = 1
+		else
+			iModDoor = -1
+		endif
+	endif
+
+	;====================================================================================
+	;To door dealings
+	if eval strToDoor == "000F3C5F"
+		if IsModLoaded "YUP - Base Game + All DLC.esm"
+			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64ED"
+		endif
+	elseif eval strToDoor == "0016A9B8"
+		if IsModLoaded "YUP - Base Game + All DLC.esm"
+			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64EE"
+		endif
+	elseif eval strToDoor == "000F3C5E"
+		if IsModLoaded "YUP - Base Game + All DLC.esm"
+			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64EC"
+		endif
+	elseif eval strToDoor == "0016A9B2"
+		if IsModLoaded "YUP - Base Game + All DLC.esm"
+			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64EB"
+		endif
+	elseif eval strToDoor == "00152C02" ;RSCharlieDoor
+		if toDoor.GetDisabled
+			let toDoor := RSCharlieDoorDestroyed
+		endif
+	elseif eval strToDoor == "001093DB" ;NellisHangar1bDoor1
+		if toDoor.GetDisabled
+			let toDoor := toDoor.GetParentRef ;NellisHangar1aDoor1
+		endif
+	elseif eval strToDoor == "001093DC" ;Hangar1bDoor2
+		if toDoor.GetDisabled
+			let toDoor := toDoor.GetParentRef ;Hangar1aDoor2
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "CB7D" ;NVDLC04Road02ToSilo02DoorREF
+		if toDoor.GetDisabled
+			let toDoor := GetFormFromMod "LonesomeRoad.esm" "39F3" ;NVDLC04Silo2DoorREFDUPLICATE000 
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "CB7A" ;NVDLC04Silo02ToRoad02DoorREF
+		if toDoor.GetDisabled
+			let toDoor := GetFormFromMod "LonesomeRoad.esm" "29AD" ;NVDLC04Silo02StartDoorREF
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "DCC2"
+		if toDoor.GetDisabled
+			let toDoor := toDoor.GetParentRef ;TempleEntrance
+		endif
+	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "DCC1"
+		if toDoor.GetDisabled
+			let toDoor := toDoor.GetParentRef ;TempleExit
+		endif
+	elseif eval strToDoor == "00133931" ;VHDCheckpointExtDoorWestREF
+		if toDoor.GetDisabled
+			iModDoor = 2
+		else
+			iModDoor = -2
+		endif
+	elseif eval strToDoor == "0013C8C9" ;VHDCheckpointEastDoor
+		if toDoor.GetDisabled
+			iModDoor = 2
+		else
+			iModDoor = -2
+		endif
+	elseif eval strToDoor == "00168DB5" ;v34NorthTeleportDoor
+		if toDoor.GetDisabled
+			iModDoor = 2
+		else
+			iModDoor = -2
+		endif
+	elseif eval strToDoor == "00136B5F" ;SVElevatorDoorVault
+		if eval GetObjectiveCompleted VMQ02 5 || ((GetObjectiveCompleted VMQHouse2 32) && (GetObjectiveCompleted VMQHouse2 34))
+			iModDoor = 2
+		else
+			iModDoor = -2
+		endif
+	endif
+
+	if fromDoor == 0
+		fromDoor = rSelf
+	endif
+	;====================================================================================
+	;Modifying doors if necessary
+	array_var aPossiblyInaccessibleDoors = Ar_List VHDCheckpointExtDoorWestREF VHDCheckpointEastDoor v34NorthTeleportDoor
+	array_var aAddDoors = Ar_List (GFFM "FalloutNV.esm" "136B5F")
+	Ar_Cat aPossiblyInaccessibleDoors aAddDoors
+
+	ref rFromDoorLink = fromDoor.GetTeleportDoor
+	if eval (Ar_Find rFromDoorLink aPossiblyInaccessibleDoors) != Ar_BadNumericIndex
+		SetFormFlag fromDoor 256 0 ;Unsetting the inaccessibility
+	endif
+
+	if iModDoor == 1
+		SetFormFlag toDoor 256 1
+	elseif iModDoor == -1
+		SetFormFlag toDoor 256 0
+	elseif iModDoor == 2
+		SetFormFlag fromDoor 256 1
+	elseif iModDoor == -2
+		SetFormFlag fromDoor 256 0
+	endif
+	;====================================================================================
+	;Changing door prompts
+
+	if eval TestExpr WRQuestStart.aShuffle[rSelf.RefToString]
+		int bObscure = GetVariable "bObscure" WRQuestStart
+		if fromDoor.GetRefActivationPromptOverride || bObscure == 1
+			ref rOldCell
+			ref rNewCell
+	
+			if toDoor == 0
+				Print "toDoor is 0, rSelf: " + GetFormIdString fromDoor
+			endif
+	
+			if IsFormValid (fromDoor.GetTeleportDoor.gpc)
+				rOldCell= fromDoor.GetTeleportDoor.gpc
+			else
+				rOldCell= fromDoor.GetTeleportDoor.gpw
+			endif
+	
+			if IsFormValid (toDoor.gpc)
+				rNewCell= toDoor.gpc
+			else
+				rNewCell= toDoor.gpw
+			endif
+			string_var sDestination = $rNewCell
+			
+			if bObscure == 1
+				if eval WRQuestStart.aDoorsUsed[rSelf.RefToString] == 0 && WRQuestStart.aDoorsUsed[fromDoor.RefToString] == 0
+					sDestination = "???"
+				endif
+			endif
+			
+	
+			string_var sOldActivation = ""
+			if fromDoor.GetRefActivationPromptOverride
+				sOldActivation = fromDoor.GetRefActivationPromptOverride
+			endif
+			;print "rOldCell: " + $rOldCell + " sOldActivation: " + $sOldActivation
+			;print "sv_find rOldCell: " + $(sv_find ($rOldCell) sOldActivation)
+			;print "sv_find ???: " + $(sv_find "???" sOldActivation) 
+			if (sv_find ($rOldCell) sOldActivation) > -1
+				string_var sReplace = $rOldCell + "|" + sDestination
+				sv_replace $sReplace sOldActivation
+				fromDoor.SetRefActivationPromptOverride $sOldActivation
+			elseif (sv_find "???" sOldActivation) > -1
+				string_var sReplace = "???|" + sDestination
+				sv_replace $sReplace sOldActivation
+				fromDoor.SetRefActivationPromptOverride $sOldActivation
+			else
+				string_var sActivation = "Enter " + sDestination
+				fromDoor.SetRefActivationPromptOverride $sActivation
+			endif
+			;print "New activation prompt: " + $fromDoor.GetRefActivationPromptOverride
+		endif
+	endif
+	;====================================================================================
+	;====================================================================================
+	;Time to actually call SetDoorTeleport
+
+	;Currently necessary because sometimes SetDoorTeleport doesn't go through? Slow though :/
+	ref rTeleportDoor = fromDoor.GetTeleportDoor
+	fX = WRQuestStart.aAllDoors[toDoor.RefToString][0]
+	fY = WRQuestStart.aAllDoors[toDoor.RefToString][1]
+	fZ = WRQuestStart.aAllDoors[toDoor.RefToString][2]
+	fRot = WRQuestStart.aAllDoors[toDoor.RefToString][3]
+
+	while rTeleportDoor != toDoor
+		fromDoor.SetDoorTeleport toDoor fX fY fZ fRot
+		rTeleportDoor = fromDoor.GetTeleportDoor
+		if eval rSelf != fromDoor
+			rSelf.SetDoorTeleport toDoor fX fY fZ fRot
+		endif
+	loop
+;	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set door " + GetFormIdString fromDoor + " to " + GetFormIdString toDoor )
+;	PrintF "WRSetDoorTeleportUDF.txt" "  Verification: fromDoor.GetTeleportDoor: " + GetFormIdString rTeleportDoor
+end

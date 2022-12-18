@@ -1,0 +1,300 @@
+scn WRQuestStartSCRIPT
+
+array_var aAllDoors
+array_var aDoorList
+array_var aDoorsToReset
+array_var aDoorsUsed
+array_var aOptions
+array_var aOptionsSelected
+array_var aShuffle
+array_var aWatchedVariables
+array_var aWhitelist
+float fTimer
+int bObscure
+int iAddOnce
+int iDisconnectivity
+int iGetGameLoaded
+int iOptionSelecting
+int iIndex
+int iStartEvents
+int iTimer
+int iVersions
+ref rDoor
+ref rDoorUsing
+ref rLink
+ref rRecentDoor
+ref udfOnlyDoorRefs
+string_var sMenu
+
+begin gamemode
+	if GetGameRestarted
+		WriteStringToFile "WRLog.txt" 0 "WorldRandomizer started. Verifying plugin versions...%r"
+		iVersions = 0
+		if GetNVSEVersion < 6
+			iVersions = 2
+		elseif GetNVSEVersion == 6
+			if GetNVSERevision < 2
+				iVersions = 2
+			elseif GetNVSERevision == 2
+				if GetNVSEBeta < 4
+					iVersions = 2
+				endif
+			endif
+		endif
+
+		if (GetPluginVersion "JIP NVSE Plugin") < 56.34
+			iVersions += 4
+		endif
+	
+		if (GetPluginVersion "JohnnyGuitarNVSE") < 430
+			iVersions += 8
+		endif
+	
+		if iVersions != 0
+			PrintF "WRLog.txt" "Plugins necessary to World Randomizer are out of date or missing. Missing:"
+			if GetBit iVersions 1
+				PrintF "WRLog.txt" "xNVSE v6.2.4 or higher"
+			endif
+			if GetBit iVersions 2
+				PrintF "WRLog.txt" "JIP NVSE v56.34 or higher"
+			endif
+			if GetBit iVersions 3
+				PrintF "WRLog.txt" "JohnnyGuitar NVSE v4.30 or higher"
+			endif
+			MessageBoxEx "Plugins necessary to World Randomizer are out of date or missing. Check WRLog.txt in your game install folder."
+			Print "Plugins necessary to World Randomizer are out of date or missing. Check WRLog.txt in your game install folder."
+			return
+		else
+			PrintF "WRLog.txt"  "Done. Should be all good."
+		endif
+
+		if FileExists "Config\WorldRandomizer.ini" == 0
+			SetINIfloat "Main:bExportRandomizer" 1
+			SetINIfloat "Main:bImportRandomizerOnNextLoad" 0
+			SetINIfloat "Main:bRerandomizeWorld" 0
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Created WorldRandomizer.ini." )
+		endif
+
+		RemoveINISection "Main" "WROriginalLinks.ini"
+		iIndex = -1
+		udfOnlyDoorRefs = ({array_var aIter} => (*aIter).GetTeleportDoor)
+		array_var aGLTA = Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs
+		while (iIndex += 1) < (Ar_Size aGLTA)
+			ref rDoor = aGLTA[iIndex]
+			string_var sKeystring = "Main/" + rDoor.RefToString
+			string_var sLink = rDoor.GetTeleportDoor.RefToString
+			SetINIString $sKeystring $sLink "WROriginalLinks.ini"
+		loop
+	endif
+
+	if eval iVersions != 0 || (GetStage VCG01) < 55
+		if eval IsModLoaded "Fallout3.esm" && (GetStage (GFFM "Fallout3.esm" "14E83")) > 5
+		else
+			return
+		endif
+	endif
+
+	if eval GetGameLoaded || iGetGameLoaded
+		if iGetGameLoaded == 0
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Save file loaded." )
+			aDoorsToReset = Ar_Construct "Array"
+			SetGameMainLoopCallback WRVariableCheckerUDF 1 60 9
+			iGetGameLoaded = 1
+			iStartEvents = 1
+			udfOnlyDoorRefs = ({array_var aIter} => (*aIter).GetTeleportDoor) ;Necessary for RandomizeWorldUDF
+		endif
+
+		if eval (Ar_Size aWatchedVariables) < 1
+			aWatchedVariables = Ar_Construct "Stringmap"
+		endif
+		
+		if eval (Ar_Size aAllDoors) != (Ar_Size (Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs))
+			Call WRGetAllDoorsUDF
+		endif
+
+		if eval (ListGetCount WRAllDoors) < (Ar_Size aAllDoors)
+			array_var aKeys = Ar_Keys aAllDoors
+			iIndex = -1
+			while (iIndex += 1) < (Ar_Size aAllDoors)
+				string_var sKey = aKeys[iIndex]
+				ListAddForm WRAllDoors (StringToRef $sKey)
+			loop
+			sv_destruct sKey
+			aKeys = Ar_Null
+		endif
+
+		if eval (TypeOf aDoorsUsed) != "Stringmap" || (Ar_Size aDoorsUsed) < 1
+;			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting up aDoorsUsed, size < 1" )
+			aDoorsUsed = Ar_Construct "Stringmap"
+			foreach (array_var aEntry) <- aAllDoors
+				aDoorsUsed[aEntry["key"]] = 0
+			loop
+		elseif eval (Ar_Keys aDoorsUsed) != (Ar_Keys aAllDoors)
+;			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Adding missing keys to aDoorsUsed" )
+			foreach (array_var aEntry) <- aAllDoors
+				if eval !(Ar_HasKey aDoorsUsed aEntry["key"])
+;					PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Adding " + aEntry["key"] )
+					aDoorsUsed[aEntry["key"]] = 0
+				endif
+			loop
+		endif
+
+		if eval iStartEvents
+			RemoveEventHandler "OnActivate" WROnActivateDoorsUDF "first"::WRAllDoors "second"::playerref
+			RemoveEventHandler "OnCellEnter" WROnCellEnterUDF
+			SetEventHandler "OnActivate" WROnActivateDoorsUDF "first"::WRAllDoors "second"::playerref
+			SetEventHandler "OnCellEnter" WROnCellEnterUDF
+			iStartEvents = 0
+		endif
+
+		if eval GetINIFloat "Main:bRerandomizeWorld"
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Rerandomize world requested." )
+			Ar_Erase aShuffle
+			Ar_Erase aDoorsToReset
+			Ar_ForEach aDoorsUsed ({array_var aIter} => *aIter = 0)
+			iOptionSelecting = 0
+			SetINIfloat "Main:bRerandomizeWorld" 0
+		elseif eval (GetINIFloat "Main:bImportRandomizerOnNextLoad")
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Importing randomization..." )
+			if eval (Ar_Size (GetINISection "aShuffle" "RandomizedWorld.ini")) > 0
+				Ar_Erase aShuffle
+				Ar_Erase aDoorsToReset
+				Ar_ForEach aDoorsUsed ({array_var aIter} => *aIter = 0)
+				iOptionSelecting = 2
+				;Call WRWorldResetUDF
+				Call WRReadaShuffleFromFileUDF
+			else
+				MessageExAlt 5 "#0|WorldRandomizer - There are no doors to import!"
+				PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| No doors found from RandomizedWorld.ini." )
+			endif
+			SetINIfloat "Main:bImportRandomizerOnNextLoad" 0
+		endif
+
+		;This detects an old (pre-1.2) save with the mod essentially
+		if eval (Ar_Size aShuffle) > 0 && (TypeOf aShuffle) != "Stringmap"
+			if eval (Ar_Size aDoorList) == (Ar_Size aShuffle)
+				PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Detected old aShuffle, converting to new format." )
+				array_var aShuffleOld = Ar_Copy aShuffle
+				aShuffle = Ar_Construct "Stringmap"
+				iIndex = -1
+				while (iIndex += 1) < (Ar_Size aShuffleOld)
+					rDoor = aDoorList[iIndex][0]
+					if eval aShuffleOld[iIndex] == -1
+						aShuffle[rDoor.RefToString] = rDoor
+					else
+						aShuffle[rDoor.RefToString] = aDoorList[aShuffleOld[iIndex]][0]
+                    	endif
+				loop
+				aShuffleOld = aDoorList = Ar_Null
+			else ;Weird.
+				aShuffle = Ar_Construct "Stringmap"
+				iOptionSelecting = 0
+				aDoorList = Ar_Null
+				MessageBoxEx "Old aShuffle detected but couldn't convert. See WRLog.txt in your game install folder or console"
+				string_var sError = "Old aDoorList is not the same size as old aShuffle. This most likely occurred due to importing WorldRandomizer.txt that was generated "
+				sError = $sError + "by a different (pre-1.2) version or different addons. Clearing aShuffle and randomizing anew instead (you can reload the save however)."
+				Print $sError
+				PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + $sError )
+				sv_destruct sError
+			endif
+		endif
+    
+		if eval (Ar_Size aShuffle) > 0
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aShuffle detected, setting doors..." )
+			Call WRWorldResetUDF
+			iIndex = 0
+			foreach (array_var aEntry) <- aShuffle
+				string_var sKey = aEntry["key"]
+				ref rValue = aEntry["value"]
+				if eval Ar_HasKey aAllDoors sKey
+					if eval rValue && Ar_HasKey aAllDoors rValue.RefToString
+						rDoor = StringToRef $sKey
+						rDoor.call WRSetDoorTeleportUDF rValue
+						iIndex += 1
+					endif
+				else
+					PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting door " + $sKey + " failed, mod not loaded?" )
+				endif
+			loop
+			sv_destruct sKey
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + $iIndex + " doors." )
+;			Call WRConnectivityUDF
+			iGetGameLoaded = 0
+			iOptionSelecting = 99
+		elseif iOptionSelecting == 99
+			aShuffle = Ar_Construct "Stringmap"
+;			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aShuffle size before randomization: " + $(Ar_Size aShuffle) )
+			Call WRRandomizeWorldOLDUDF
+;			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aShuffle size after randomization: " + $(Ar_Size aShuffle) )
+			iGetGameLoaded = 0
+		endif
+
+		if eval iAddOnce == 0
+			player.additem WRProblemSolver 1
+			iAddOnce = 1
+		endif
+
+		if eval GetINIFloat "Main:bExportRandomizer" && (Ar_Size aShuffle) > 0
+			Call WRWriteaShuffleToFileUDF
+			SetINIfloat "Main:bExportRandomizer" 0
+		endif
+
+	endif
+
+;====OPTION SELECT
+	if eval iOptionSelecting < 2
+		if iOptionSelecting == 0
+			iIndex = -1
+			sMenu = "^World Randomizer Plugin Selection^Select the plugins to include:"
+			aOptions = Ar_Construct "Array"
+			aOptionsSelected = Ar_List 0
+			while (iIndex += 1) < GetNumLoadedMods
+				if eval (Ar_Size (Ar_Filter (GLTA 58 iIndex) udfOnlyDoorRefs)) > 0
+					sMenu = $sMenu + "| " + GetModName iIndex
+					Ar_Append aOptions iIndex
+				endif
+			loop
+			Ar_Resize aOptionsSelected (Ar_size aOptions) 0
+			sMenu = $sMenu + "|Select All|Done"
+			iOptionSelecting = 1
+		endif
+		MessageBoxExAlt WRPluginSelectionUDF $sMenu
+	elseif eval iOptionSelecting >= 2 && iOptionSelecting < 4
+		if iOptionSelecting == 2
+			GetButtonPressed ;Not actually sure this is necessary, but just in case to clear it
+			ShowMessage WRObscureMessage
+			iOptionSelecting = 3
+		endif
+
+		if eval (bObscure = GetButtonPressed) != -1
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door activation prompt obscuring: " + $bObscure)
+			call WROnCellEnterUDF (player.gpc)
+			iOptionSelecting = 4
+		endif
+	else
+		iOptionSelecting = 99
+	endif
+
+;====DOOR RESETTING -- Essentially refreshes the local doors when you change cells
+	if eval (Ar_Size aDoorsToReset) > 0
+		iIndex = (Ar_Size aDoorsToReset) - 1
+		rDoor = aDoorsToReset[iIndex]
+		rLink = rDoor.GetTeleportDoor
+		rDoor.call WRSetDoorTeleportUDF rLink
+		Ar_Erase aDoorsToReset iIndex
+	endif
+
+	if rDoorUsing
+		if iTimer > 0
+			iTimer -= 1
+		else
+			rDoorUsing = 0
+		endif
+	endif
+
+;====This imod makes the screen go really dark sometimes with WR
+	if eval IsImageSpaceActive NVCaveEnteringISFX
+		rimod NVCaveEnteringISFX
+	endif
+
+end

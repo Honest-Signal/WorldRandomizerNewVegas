@@ -1,0 +1,34 @@
+scn WRPluginSelectionUDF
+
+int iButton
+
+begin function {iButton}
+;	print "WRPluginSelectionUDF button: " + $iButton
+
+	if eval iButton < (Ar_Size WRQuestStart.aOptions)
+		if eval WRQuestStart.aOptionsSelected[iButton]
+			WRQuestStart.aOptionsSelected[iButton] = 0
+			iButton = WRQuestStart.aOptions[iButton]
+			string_var sReplace = "* " + GetModName iButton + "| " + GetModName iButton
+		else
+			WRQuestStart.aOptionsSelected[iButton] = 1
+			iButton = WRQuestStart.aOptions[iButton]
+			string_var sReplace = " " + GetModName iButton + "|* " + GetModName iButton
+		endif
+		string_var sMenu = WRQuestStart.sMenu
+		sv_replace $sReplace sMenu
+		WRQuestStart.sMenu = sMenu
+	elseif eval iButton == (Ar_Size WRQuestStart.aOptions)
+		int iIndex = -1
+		string_var sMenu = WRQuestStart.sMenu
+		while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
+			WRQuestStart.aOptionsSelected[iIndex] = 1
+			iButton = WRQuestStart.aOptions[iIndex]
+			string_var sReplace = " " + GetModName iButton + "|* " + GetModName iButton
+			sv_replace $sReplace sMenu
+		loop
+		WRQuestStart.sMenu = sMenu
+	else
+		WRQuestStart.iOptionSelecting = 2
+	endif
+end

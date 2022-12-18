@@ -1,0 +1,106 @@
+scn WRRandomizeWorldOLDUDF
+
+begin function { }
+	Call WRWorldResetUDF
+
+	array_var aDoors = Ar_Construct "Array"
+	array_var aModsUsed = Ar_Construct "Array"
+	int iIndex = -1
+	while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
+		if eval WRQuestStart.aOptionsSelected[iIndex]
+			int iModIndex = WRQuestStart.aOptions[iIndex]
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Including mod " + $(GetNthModName iModIndex) + " in randomization" )
+			array_var aAddDoors = Ar_Filter (GLTA 58 iModIndex) WRQuestStart.udfOnlyDoorRefs
+			Ar_Cat aDoors aAddDoors
+			Ar_Append aModsUsed iModIndex
+		endif
+	loop
+
+	call WRGenerateWhitelistUDF
+	array_var aWhitelist = GetArrayVar aWhitelist WRQuestStart
+;	Print $aWhitelist
+
+	;Further filtering of doors
+	iIndex = 0
+	while iIndex < (Ar_Size aDoors)
+		ref rDoor = aDoors[iIndex]
+		string_var sKeystring = "Main/" + rDoor.RefToString
+		ref rLink = StringToRef (GetINIString $sKeystring "WROriginalLinks.ini")
+
+;		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rDoor is " + $rDoor.RefToString + " Index is: " + $iIndex + " Ar_Find: " + $(Ar_Find rDoor aWhitelist) + " Ar_Find base: " + $(Ar_Find (rDoor.GetBaseForm) aWhitelist) )
+
+		if eval (Ar_Find (GetSourceModIndex rLink) aModsUsed) == Ar_BadNumericIndex
+			Ar_Erase aDoors iIndex
+		elseif eval ((Ar_Find rDoor aWhitelist) != Ar_BadNumericIndex) || ((Ar_Find (rDoor.GetBaseForm) aWhitelist) != Ar_BadNumericIndex)
+;			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Should be removing " + $rDoor.RefToString )
+			Ar_Erase aDoors iIndex
+		else
+			iIndex += 1
+		endif
+	loop
+
+;	WriteArrayToFile "WRaDoors.txt" 0 aDoors
+
+;	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aDoors size: " + $(Ar_Size aDoors) )
+
+	if eval (Ar_Size aDoors) < 1
+		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| No doors available. Exiting randomization..." )
+		return
+	endif
+
+	array_var aShuffle = GetArrayVar aShuffle WRQuestStart
+	int iTimes = 1
+	while (Ar_Size aShuffle) < 1
+		if eval iTimes % 10 == 0 || iTimes < 10
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Creating aShuffle... (" + $iTimes + " time(s))")
+		endif
+		iIndex = -1
+		while (iIndex += 1) < (Ar_Size aDoors)
+			ref rDoor = aDoors[iIndex]
+			if eval Ar_HasKey aShuffle (rDoor.RefToString)
+				continue
+			endif
+			array_var aRange = Ar_Range (iIndex+1) ((Ar_Size aDoors)-1)
+			while (Ar_Size aRange) > 0
+				int iRand = GetRandomInRange 0 (Ar_Size aRange)
+				int iRange = aRange[iRand]
+				Ar_Erase aRange iRand
+				ref rRand = aDoors[iRange]
+				if eval Ar_HasKey aShuffle (rRand.RefToString)
+					continue
+				endif
+
+;				ref rLink = rDoor.GetTeleportDoor
+;				ref rRandLink = rRand.GetTeleportDoor
+
+				rDoor.call WRSetDoorTeleportUDF rRand
+				rRand.call WRSetDoorTeleportUDF rDoor
+;				rLink.call WRSetDoorTeleportUDF rRandLink
+;				rRandLink.call WRSetDoorTeleportUDF rLink
+				aShuffle[rDoor.RefToString] = rRand
+				aShuffle[rRand.RefToString] = rDoor
+;				aShuffle[rLink.RefToString] = rRandLink
+;				aShuffle[rRandLink.RefToString] = rLink
+				break
+			loop
+		loop
+		
+		if eval !(call WRVerifyCellAccessUDF) && (Ar_Find 0 aModsUsed) != Ar_BadNumericIndex
+			Ar_Erase aShuffle
+			iTimes += 1
+		else
+			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Done. (Had to verify " + $iTimes + " time(s). Size: " + $(Ar_Size aShuffle) + ")")
+		endif
+	loop
+
+	if eval (Ar_Size aShuffle) > (Ar_Size aDoors)
+		foreach (array_var aEntry) <- aShuffle
+			string_var sKey = aEntry["key"]
+			ref rKey = StringToRef $sKey
+			if eval (Ar_Find rKey aDoors) == Ar_BadNumericIndex
+				PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Unintended door in aShuffle: " + $sKey )
+			endif
+		loop
+	endif
+		
+end

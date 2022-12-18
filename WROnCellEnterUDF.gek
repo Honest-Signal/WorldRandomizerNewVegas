@@ -1,0 +1,10 @@
+scn WROnCellEnterUDF
+
+ref rCell
+begin function {rCell}
+	array_var aDoors = GetRefsInCell rCell 28 0 1
+	aDoors = Ar_Filter aDoors ({array_var aIter} => (*aIter).GetTeleportDoor)
+
+	array_var aDoorsToReset = GetArrayVar "aDoorsToReset" WRQuestStart
+	Ar_Cat aDoorsToReset aDoors
+end

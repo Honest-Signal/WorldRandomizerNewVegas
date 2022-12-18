@@ -1,0 +1,52 @@
+scn WROnActivateDoorsUDF
+
+ref rDoor
+ref rActor
+
+begin function {rDoor, rActor}
+	if IsRefInList WRAllDoorsCasino rDoor > -1
+		EnablePlayerControls
+	endif
+
+	;This basically verifies that we actually went *through* the activated door.
+	ref rDoorUsing = GetRefVariable "rDoorUsing" WRQuestStart
+	;Print "rDoor: " + GetFormIdString rDoor + " rDoorUsing: " + GetFormIdString rDoorUsing
+	if rDoor == rDoorUsing
+		SetRefVariable "rRecentDoor" rDoor WRQuestStart ;Updates the problem solver to have the door we just went through
+		ref rLink = rDoor.GetTeleportDoor
+		rLink.unlock ;In case you have a case like a lockpick door going to 
+		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Player activated door " + rDoor.RefToString + " to " + rLink.RefToString + ".")
+
+		;Moves the BoS destruction activator to wherever you exit
+		if rDoor == vHVLevel02MainDoorREF && VDialogueHiddenValley.GeneratorSetToBlow == 1
+			HVBunkerExplosionTriggerREF.moveto rLink
+		endif
+
+		;Moves RS Charlie destruction activator to wherever you exit
+		if (VStoryState >= 30 || GetHasNote VFreeformNovacRangerStationNote)
+			ref rActivator = GFFM "FalloutNV.esm" "1271DA"
+			rActivator.moveto rLink
+		endif
+
+		;Opens the weather station hatch
+		if eval rLink == (GFFM "FalloutNV.esm" "156FB6") && SecuritonVaultHatchRef.GetOpenState > 2
+			SecuritonVaultHatchRef.SetOpenState 1
+		endif
+
+		if rLink == VFSSilverRushExtDoorREF
+			if VFSSimonREF.SimonSearched == 1
+				VFSSilverRushFriskingTriggerREF.Activate VFSSimonREF 1
+			endif
+		endif
+
+		array_var aDoorsUsed = GetArrayVar "aDoorsUsed" WRQuestStart
+		aDoorsUsed[rDoor.RefToString] = 1
+		aDoorsUsed[rLink.RefToString] = 1
+		array_var aDoorsToReset = GetArrayVar "aDoorsToReset" WRQuestStart
+		array_var aList = Ar_List rDoor rLink
+		Ar_Cat aDoorsToReset aList
+	else
+		SetRefVariable "rDoorUsing" rDoor WRQuestStart
+		SetVariable "iTimer" 1 WRQuestStart
+	endif
+end

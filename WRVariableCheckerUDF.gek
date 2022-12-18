@@ -1,0 +1,25 @@
+scn WRVariableCheckerUDF
+
+begin function { }
+
+
+
+;====Dead Money Variables
+	if eval IsModLoaded "DeadMoney.esm"
+		if eval !(Ar_HasKey WRQuestStart.aWatchedVariables "DMcollar")
+			WRQuestStart.aWatchedVariables["DMcollar"] = 1
+		endif
+		if eval WRQuestStart.aWatchedVariables["DMcollar"]
+			ref rCollarGlobal = GFFM "DeadMoney.esm" "BFBA"
+			int iCollarGlobal = GetGlobalVariable rCollarGlobal
+			if eval (GetStage (GFFM "DeadMoney.esm" "FBF")) > 0
+				if eval !iCollarGlobal && (GetStage (GFFM "DeadMoney.esm" "FC1")) < 100
+					SetGlobalVariable rCollarGlobal 1
+				endif
+				WRQuestStart.aWatchedVariables["DMcollar"] = 0
+			elseif iCollarGlobal
+				SetGlobalVariable rCollarGlobal 0
+			endif
+		endif
+	endif
+end

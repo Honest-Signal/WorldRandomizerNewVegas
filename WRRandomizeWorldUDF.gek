@@ -1,0 +1,63 @@
+scn WRRandomizeWorldUDF
+
+begin function { }
+	array_var aDoors = Ar_Construct "Array"
+	int iIndex = -1
+	while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
+		if eval WRQuestStart.aOptionsSelected[iIndex]
+			array_var aAddDoors = Ar_Filter (GLTA 58 WRQuestStart.aOptions[iIndex]) WRQuestStart.udfOnlyDoorRefs
+			Ar_Cat aDoors aAddDoors
+		endif
+	loop
+
+	array_var aShuffle = GetArrayVar aShuffle WRQuestStart
+	int iBreakLoop = 0
+	iIndex = -1
+	while (iIndex += 1) < (Ar_Size aDoors)
+		ref rDoor = aDoors[iIndex]
+		if eval Ar_HasKey aShuffle (rDoor.RefToString)
+			continue
+		endif
+		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Starting iIndex: " + $iIndex)
+		int iNewDisconnectivity = 999999999
+		array_var aRange = Ar_Range iIndex ((Ar_Size aDoors)-1)
+		while iNewDisconnectivity > WRQuestStart.iDisconnectivity
+			if eval (Ar_Size aRange) > 0
+				int iRand = GetRandomInRange 0 (Ar_Size aRange)
+				int iRange = aRange[iRand]
+				Ar_Erase aRange iRand
+
+				ref rLink = rDoor.GetTeleportDoor
+				ref rRand = aDoors[iRange]
+				ref rRandLink = rRand.GetTeleportDoor
+				if eval Ar_HasKey aShuffle (rRand.RefToString)
+					continue
+				endif
+
+				rDoor.call WRSetDoorTeleportUDF rRand
+				rRand.call WRSetDoorTeleportUDF rDoor
+				rLink.call WRSetDoorTeleportUDF rRandLink
+				rRandLink.call WRSetDoorTeleportUDF rLink
+				iNewDisconnectivity = Call WRConnectivityUDF
+				if iNewDisconnectivity > WRQuestStart.iDisconnectivity
+					rDoor.call WRSetDoorTeleportUDF rLink
+					rLink.call WRSetDoorTeleportUDF rDoor
+					rRand.call WRSetDoorTeleportUDF rRandLink
+					rRandLink.call WRSetDoorTeleportUDF rRand
+				else
+					aShuffle[rDoor.RefToString] = rRand
+					aShuffle[rRand.RefToString] = rDoor
+					aShuffle[rLink.RefToString] = rRandLink
+					aShuffle[rRandLink.RefToString] = rLink
+				endif
+			else
+				iBreakLoop = 1
+				break
+			endif
+		loop
+		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Finished iIndex: " + $iIndex)
+		if iBreakLoop
+			break
+		endif
+	loop
+end

@@ -1,0 +1,66 @@
+scn WRConnectivityUDF
+
+begin function { }
+	array_var aCells = GLTA 57
+	array_var aCellsVisited = Ar_MapTo aCells ({array_var aIter} => 0)
+	
+	array_var aWorldspaces = Ar_Construct "Stringmap"
+	WriteStringToFile "WR_WorldspaceCells.txt" 0 "%e"
+	array_var aAllDoors = GetArrayVar aAllDoors WRQuestStart
+	foreach (array_var aEntry) <- aAllDoors
+		array_var aValue = aEntry["value"]
+		if eval (GetType (aValue[5])) == 65
+			string_var sWorldspace = RefToString (aValue[5])
+			if eval Ar_HasKey aWorldspaces sWorldspace
+				Ar_Append (aWorldspaces[sWorldspace]) (aEntry["key"])
+			else
+				aWorldspaces[sWorldspace] = Ar_List (aEntry["key"])
+			endif
+		endif
+	loop
+
+	array_var aDoorsVisited = Ar_MapTo aAllDoors ({array_var aIter} => 0)
+	foreach (array_var aEntry) <- aWorldspaces
+		array_var aValue = aEntry["value"]
+		PrintF "WR_WorldspaceCells.txt" GetEditorID (StringToRef (aEntry["key"])) + " (Doors: " + $(Ar_Size aValue) + ")"
+		int iIndex = -1
+		while (iIndex += 1) < (Ar_Size aValue)
+			string_var sDoor = aValue[iIndex]
+			PrintF "WR_WorldspaceCells.txt" "    " + sDoor
+			ref rNextCell = (StringToRef $sDoor).GetTeleportDoor.gpc
+			if rNextCell != 0
+				int iCellIndex = Ar_Find rNextCell aCells
+				if eval aCellsVisited[iCellIndex] == 0
+					array_var aQueue = Ar_List rNextCell
+					aCellsVisited[iCellIndex] = 1
+					while (Ar_Size aQueue) > 0
+						ref rSearch = aQueue[0]
+						Ar_Erase aQueue 0
+						array_var aNextDoors = Ar_Filter (GetRefsInCell rSearch 28 0 1) ({array_var aIter} => (*aIter).GetTeleportDoor)
+						foreach (array_var aDoor) <- aNextDoors
+							ref rDoor = *aDoor
+							rNextCell = rDoor.GetTeleportDoor.gpc
+							iCellIndex = Ar_Find rNextCell aCells
+							if eval rNextCell != 0 && aCellsVisited[iCellIndex] == 0
+								Ar_Append aQueue rNextCell
+								aCellsVisited[iCellIndex] = 1
+							endif
+						loop
+					loop
+				endif
+			endif
+		loop
+	loop
+
+	array_var aResult = Ar_Filter aCellsVisited ({array_var aIter} => *aIter == 0)
+	PrintF "WRLog.txt" "Unconnected cells: " + $(Ar_Size aResult) + "/" + $(Ar_Size aCells)
+;	foreach (array_var aEntry) <- aCells
+;		int iKey = aEntry["key"]
+;		if eval aCellsVisited[iKey] == 0
+;			int iDoors = Ar_Size (Ar_Filter (GetRefsInCell (*aEntry) 28 0 1) ({array_var aIter} => (*aIter).GetTeleportDoor))
+;			PrintF "WRLog.txt" "    " + GetEditorID (*aEntry) + "(Teleport doors: " + $iDoors + ")"
+;		endif
+;	loop
+	
+	SetFunctionValue (Ar_Size aResult)
+end

@@ -1,0 +1,26 @@
+scn WRGetYUPIndexUDF
+
+;Bro why are there so many different names for this mod
+
+int iModIndex
+
+begin function { }
+	iModIndex = -1
+
+	int iIndex = -1
+	while (iIndex += 1) < GetNumLoadedMods
+		string_var sModName = GetNthModName iIndex
+		ref rDoor1 = GFFM $sModName "64EB"
+		ref rDoor2 = GFFM $sModName "64EC"
+		ref rDoor3 = GFFM $sModName "64ED"
+		ref rDoor4 = GFFM $sModName "64EE"
+
+		;Basically this should be a YUP... I hope
+		if eval rDoor1 && rDoor1.GetTeleportDoor && rDoor2 && rDoor2.GetTeleportDoor && rDoor3 && rDoor3.GetTeleportDoor && rDoor4 && rDoor4.GetTeleportDoor
+			iModIndex = iIndex
+			break
+		endif
+	loop
+
+	SetFunctionValue iModIndex
+end
