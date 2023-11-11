@@ -17,14 +17,17 @@ begin function { }
 	
 ;========WHITELIST BEGINS
 			if eval sModName == "DeadMoney.esm"
-				Ar_Append aWhitelist (GFFM "DeadMoney.esm" "139DB") 		;Return door from the Sierra Madre
+				Ar_Append aWhitelist (GFFM "DeadMoney.esm" "139DB")     ;Return door from the Sierra Madre
 				Ar_Append aWhitelist (GFFM "DeadMoney.esm" "29EF")		;NVDLC01VaultElevatorREF -- Sierra Madre vault elevator door
+                Ar_Append aWhitelist (GFFM "DeadMoney.esm" "607A")      ;NVDLC01SuitesElevatorREF -- Link to previous
 			elseif eval sModName == "HonestHearts.esm"
 			elseif eval sModName == "LonesomeRoad.esm"
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "8481") 	;TempleEntrance -- DCC2 switches to this if disabled
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "3D1B")	;TempleExit -- DCC1 switches to this if disabled
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "39F3")	;NVDLC04Silo2DoorREFDUPLICATE000 -- CB7D switches to this if disabled
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "29AD")	;NVDLC04Silo02StartDoorREF -- CB7A switches to this if disabled
+                Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "7876")   ;NVDLC04Silo1ElevatorDoorStartREF -- These two are part of a
+                Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "7877")   ;NVDLC04Silo1ElevatorDoorEndREF -- one-way tunnel.
 			elseif eval sModName == "OldWorldBlues.esm"
 				ListAddForm WRProblemDoors (GFFM "OldWorldBlues.esm" "38C9") ;Sink balcony door, because it's a one-way
 			endif

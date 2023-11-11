@@ -1,0 +1,56 @@
+scn WRGetGreenHouseDoorUDF
+
+ref rDoor
+ref rResultDoor
+
+begin function { rDoor }
+    string_var sDoor = GetFormIDString rDoor
+    
+    if eval sDoor == "0012AEF4"
+        rResultDoor = WRGreenHouseDoor01
+    elseif eval sDoor == "0012AEF6"
+        rResultDoor = WRGreenHouseDoor02
+    elseif eval sDoor == "0012AEF8"
+        rResultDoor = WRGreenHouseDoor03
+    elseif eval sDoor == "0012AEFB"
+        rResultDoor = WRGreenHouseDoor04
+    elseif eval sDoor == "0012AEFD"
+        rResultDoor = WRGreenHouseDoor05
+    elseif eval sDoor == "0012AEFE"
+        rResultDoor = WRGreenHouseDoor06
+    elseif eval sDoor == "0012AF00"
+        rResultDoor = WRGreenHouseDoor07
+    elseif eval sDoor == "0012AF02"
+        rResultDoor = WRGreenHouseDoor08
+    elseif eval sDoor == "0012AF04"
+        rResultDoor = WRGreenHouseDoor09
+    elseif eval sDoor == "0012AF06"
+        rResultDoor = WRGreenHouseDoor10
+    elseif eval sDoor == "0012AF08"
+        rResultDoor = WRGreenHouseDoor11
+    elseif eval sDoor == "0012AF0A"
+        rResultDoor = WRGreenHouseDoor12
+    elseif eval sDoor == "0012AF0D"
+        rResultDoor = WRGreenHouseDoor13
+    elseif eval sDoor == "0012AF0E"
+        rResultDoor = WRGreenHouseDoor14
+    elseif eval sDoor == "0012AF10"
+        rResultDoor = WRGreenHouseDoor15
+    elseif eval sDoor == "0012AF12"
+        rResultDoor = WRGreenHouseDoor16
+    elseif eval sDoor == "0012AF14"
+        rResultDoor = WRGreenHouseDoor17
+    elseif eval sDoor == "0012AF19"
+        rResultDoor = WRGreenHouseDoor18
+    elseif eval sDoor == "0012AF1B"
+        rResultDoor = WRGreenHouseDoor19
+    elseif eval sDoor == "0012AF1D"
+        rResultDoor = WRGreenHouseDoor20
+    elseif eval sDoor == "0012AF1F"
+        rResultDoor = WRGreenHouseDoor21
+    elseif eval sDoor == "0016A9B7"
+        rResultDoor = WRGreenHouseDoor22
+    endif
+    
+    SetFunctionValue rResultDoor
+end

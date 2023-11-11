@@ -32,6 +32,11 @@ begin function {rDoor, rActor}
 		if eval rLink == (GFFM "FalloutNV.esm" "156FB6") && SecuritonVaultHatchRef.GetOpenState > 2
 			SecuritonVaultHatchRef.SetOpenState 1
 		endif
+        
+        ;Unpacifies people leaving the Think Tank
+		if eval rDoor.GPC == (GFFM "OldWorldBlues.esm" "0030B5")
+            CallAfter 0 ({} => EnablePlayerControls)
+        endif
 
 		if rLink == VFSSilverRushExtDoorREF
 			if VFSSimonREF.SimonSearched == 1

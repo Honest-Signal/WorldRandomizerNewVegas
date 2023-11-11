@@ -16,12 +16,38 @@ begin function { }
 		float fY = rLink.GetDoorTeleportY
 		float fZ = rLink.GetDoorTeleportZ
 		float fRot = rLink.GetDoorTeleportRot
-		ref rParent = rDoor.gpc
-		if rParent == 0
-			rParent = rDoor.gpw
-		endif
-		aAllDoors[rDoor.RefToString] = Ar_List fX fY fZ fRot ;rLink rParent
+;		ref rParent = rDoor.gpc
+;		if rParent == 0
+;			rParent = rDoor.gpw
+;		endif
+        
+        ;WRGreenHouse correction
+        if rDoor.gpc == WRGreenHouse
+            rDoor.GetPosEx fX fY fZ
+            fRot = rDoor.GetAngle Z
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " Pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
+            if fRot == 0
+                fX -= 40
+                fRot = 360
+            elseif fRot == 90
+                fY += 40
+            elseif fRot == 180
+                fX += 40
+            elseif fRot == 270
+                fY -= 40
+            endif
+           
+           fRot -= 90
+           
+           ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
+        endif
+        
+		aAllDoors[rDoor.RefToString] = Ar_List fX fY fZ fRot rLink ;rParent
 		AddFormToFormList WRAllDoors rDoor
+        
+        ; if rDoor.gpc == WRGreenHouse
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " aAllDoors pos: " + $aAllDoors[rDoor.RefToString][0] + " " + $aAllDoors[rDoor.RefToString][1] + " " + $aAllDoors[rDoor.RefToString][2] + " " + $aAllDoors[rDoor.RefToString][3])
+        ; endif
 	
 ;=======Leaving this stuff here but basically all it does is print out a file that (with modifications) can let you look at the door connections in GraphViz.
 ;		if eval (Ar_Find rDoor aAlreadyEdge) != Ar_BadNumericIndex
@@ -57,5 +83,6 @@ begin function { }
 ;	iDisconnectivity = Call WRConnectivityUDF
 	
 	WRQuestStart.aAllDoors = aAllDoors
+    ; SetINISection "aAllDoors" aAllDoors "WRaAllDoors" 
 
 end

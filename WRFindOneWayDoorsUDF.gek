@@ -1,0 +1,19 @@
+scn WRFindOneWayDoorsUDF
+
+begin function { }
+    array_var aDoors = Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs
+    int iIndex = -1
+    
+    while (iIndex += 1) < (Ar_Size aDoors)
+        ref rDoor = aDoors[iIndex]
+        ref rLink = rDoor.GetTeleportDoor
+        
+        if eval rDoor.GetDisabled || rLink.GetDisabled
+            continue
+        endif
+        
+        if eval rLink.GetTeleportDoor != rDoor
+            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|!! " + rDoor.RefToString + " appears to be one-way to " + rLink.RefToString)
+        endif
+    loop
+end

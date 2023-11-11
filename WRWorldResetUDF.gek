@@ -18,10 +18,8 @@ begin function { }
 		string_var sKeystring = "Main/" + sKey
 		ref rLink = StringToRef (GetINIString $sKeystring "WROriginalLinks.ini")
 		
-		ref rTeleportDoor = rLink.GetTeleportDoor
-		while rTeleportDoor != rDoor
+		while rLink.GetTeleportDoor != rDoor
 			rLink.SetDoorTeleport rDoor fX fY fZ fRot
-			rTeleportDoor = rLink.GetTeleportDoor
 		loop
 	loop
 end

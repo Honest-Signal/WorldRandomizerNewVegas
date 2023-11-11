@@ -1,0 +1,18 @@
+scn WRAreParentsDifferentUDF
+
+ref rNode1
+ref rNode2
+
+begin function { rNode1 rNode2 } 
+	if eval rNode1.gpc && rNode2.gpc
+		if eval rNode1.gpc != rNode2.gpc
+			SetFunctionValue 1
+		endif
+	elseif eval rNode1.gpc
+		SetFunctionValue 1
+	elseif eval rNode2.gpc
+		SetFunctionValue 1
+	elseif eval rNode1.gpw != rNode2.gpw
+		SetFunctionValue 1
+	endif
+end

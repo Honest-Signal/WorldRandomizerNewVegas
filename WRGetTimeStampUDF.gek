@@ -3,8 +3,9 @@ scn WRGetTimeStampUDF
 ;I just wanted a nicer timestamp for logging lol
 
 begin function { }
+    ref rCallingScript = GetCallingScript
 	array_var aTime = GetUserTime
-	string_var sTime = Sv_Construct "%02.0f:%02.0f:%02.0f.%03.0f" (aTime["Hour"]) (aTime["Minute"]) (aTime["Second"]) (aTime["Millisecond"])
+	string_var sTime = Sv_Construct "%02.0f:%02.0f:%02.0f.%03.0f (%i)" (aTime["Hour"]) (aTime["Minute"]) (aTime["Second"]) (aTime["Millisecond"]) rCallingScript
 	;string_var sTime = $aTime["Hour"] + ":" + $aTime["Minute"] + ":" + $aTime["Second"] + "." + $aTime["Millisecond"]
 	SetFunctionValue $sTime
 end

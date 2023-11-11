@@ -13,9 +13,12 @@ begin function { toDoor }
 	string_var strToDoor = GetFormIDString toDoor
 
 	int iModDoor = 0
+   
 
 	;From door dealings
-	if eval strFromDoor == "000F3C5F"
+    if eval rSelf.gpw == GreenhouseWorld01
+        fromDoor = call WRGetGreenHouseDoorUDF rSelf
+	elseif eval strFromDoor == "000F3C5F"
 		int iYUPIndex = Call WRGetYUPIndexUDF
 		if eval iYUPIndex != -1
 			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64ED"
@@ -88,7 +91,9 @@ begin function { toDoor }
 
 	;====================================================================================
 	;To door dealings
-	if eval strToDoor == "000F3C5F"
+	if eval toDoor.gpw == GreenhouseWorld01
+        toDoor = call WRGetGreenHouseDoorUDF toDoor
+	elseif eval strToDoor == "000F3C5F"
 		if IsModLoaded "YUP - Base Game + All DLC.esm"
 			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64ED"
 		endif
@@ -122,7 +127,9 @@ begin function { toDoor }
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "CB7A" ;NVDLC04Silo02ToRoad02DoorREF
 		if toDoor.GetDisabled
-			let toDoor := GetFormFromMod "LonesomeRoad.esm" "29AD" ;NVDLC04Silo02StartDoorREF
+			let toDoor := GetFormFromMod "LonesomeRoad.esm" "7876" ;NVDLC04Silo1ElevatorDoorStartREF
+            toDoor.call WRSetDoorTeleportUDF rSelf
+            ; This effectively inserts the one-way lift into the randomizer.
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "DCC2"
 		if toDoor.GetDisabled
@@ -241,19 +248,28 @@ begin function { toDoor }
 	;Time to actually call SetDoorTeleport
 
 	;Currently necessary because sometimes SetDoorTeleport doesn't go through? Slow though :/
-	ref rTeleportDoor = fromDoor.GetTeleportDoor
+    
+    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Size comparison: " + $(Ar_Size aAllDoors) + " " + $(Ar_Size WRQuestStart.aAllDoors) + " " + $(Ar_Size (GetArrayVar "aAllDoors" WRQuestStart)))
+    ; array_var aAllDoors = GetINISection "aAllDoors" "WRaAllDoors"
 	fX = WRQuestStart.aAllDoors[toDoor.RefToString][0]
 	fY = WRQuestStart.aAllDoors[toDoor.RefToString][1]
 	fZ = WRQuestStart.aAllDoors[toDoor.RefToString][2]
 	fRot = WRQuestStart.aAllDoors[toDoor.RefToString][3]
+    ; if eval toDoor.gpc == WRGreenHouse || fromDoor.gpc == WRGreenHouse
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + fromDoor.RefToString + " -> " + toDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
+    ; endif
 
-	while rTeleportDoor != toDoor
+	while fromDoor.GetTeleportDoor != toDoor
 		fromDoor.SetDoorTeleport toDoor fX fY fZ fRot
-		rTeleportDoor = fromDoor.GetTeleportDoor
+;       PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| fromDoor: " + fromDoor.RefToString + " link: " + fromDoor.GetTeleportDoor.RefToString + " toDoor: " + toDoor.RefToString)
 		if eval rSelf != fromDoor
 			rSelf.SetDoorTeleport toDoor fX fY fZ fRot
 		endif
 	loop
-;	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set door " + GetFormIdString fromDoor + " to " + GetFormIdString toDoor )
+    
+    ; if eval toDoor.gpc == WRGreenHouse || fromDoor.gpc == WRGreenHouse
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + fromDoor.RefToString + " -> " + toDoor.RefToString + " Teleport pos verify: " + $fromDoor.GetDoorTeleportX + " " + $fromDoor.GetDoorTeleportY + " " + $fromDoor.GetDoorTeleportZ + " " + $fromDoor.GetDoorTeleportRot)
+    ; endif
+;	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set door " + fromDoor.RefToString + " to " + toDoor.RefToString )
 ;	PrintF "WRSetDoorTeleportUDF.txt" "  Verification: fromDoor.GetTeleportDoor: " + GetFormIdString rTeleportDoor
 end

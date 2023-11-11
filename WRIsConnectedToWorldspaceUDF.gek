@@ -1,0 +1,93 @@
+scn WRIsConnectedToWorldspaceUDF
+
+array_var aQueue
+array_var aVisited
+ref rEdge
+
+begin function { rEdge }
+    int bLogging ;= (rEdge == (GFFM "OldWorldBlues.esm" "E62B"))
+    ref rNode = rEdge.gpc
+    if eval !(rNode)
+        rNode = rEdge.gpw
+    endif
+
+    SetFunctionValue 1
+    if eval bLogging
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Verifying connectivity of cell/worldspace " + GetEditorID rNode)
+    endif
+    aVisited = Ar_List rNode
+    aQueue = Ar_List rNode
+    
+    while (Ar_Size aQueue) > 0
+        ref rSearch = aQueue[0]
+		Ar_Erase aQueue 0
+        
+        if eval bLogging
+            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Entering cell/worldspace " + GetEditorID rSearch + ". aQueue size: " + $(Ar_Size aQueue))
+        endif
+        
+        array_var aDoors 
+        if eval (GetType rSearch) == 57
+            aDoors = GetRefsInCell rSearch 28 0 1
+        else
+            string_var sWorld = RefToString rSearch
+            aDoors = WRQuestStart.aWorldspacesDoorCount[sWorld]
+            sv_destruct sWorld
+            
+            if eval (Ar_Size aDoors) > 5
+                aQueue = Ar_Null
+                if eval bLogging
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Found worldspace " + GetEditorID rSearch)
+                endif
+                break
+            else
+                if eval bLogging
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Worldspace " + GetEditorID rSearch + " has 5 or less doors.")
+                    foreach array_var aEntry <- aDoors
+                        ref rWorldDoor = *aEntry
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|    Door " + rWorldDoor.RefToString)
+                    loop
+                endif
+                
+            endif
+        endif
+        
+        foreach array_var entry <- aDoors
+            ref rDoor = *entry
+            if eval bLogging
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Checking door " + rDoor.RefToString + " in " + GetEditorID rSearch)
+            endif
+            if eval rDoor.GetDisabled || rDoor.GetLockLevel == 255 || (GetFormFlag rDoor 256)
+                continue
+            endif
+            if eval rDoor.GetTeleportDoor && ListGetFormIndex WRProblemDoors (rDoor.GetTeleportDoor) == -1 && rDoor.GetTeleportDoor.GetTeleportDoor == rDoor
+                ref rNextCell = rDoor.GetTeleportDoor.gpc
+                if eval !(rNextCell)
+                    rNextCell = rDoor.GetTeleportDoor.gpw
+                    sWorld = RefToString rNextCell
+                    if eval (Ar_Size WRQuestStart.aWorldspacesDoorCount[sWorld]) > 5 && rNextCell != GreenhouseWorld01
+                        aQueue = Ar_Null
+                        if eval bLogging
+                            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Found worldspace " + GetEditorID rNextCell)
+                        endif
+                        break
+                    endif
+                endif
+                if eval bLogging
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " leads to " + GetEditorID rNextCell)
+                endif
+                if eval (Ar_Find rNextCell, aVisited) == Ar_BadNumericIndex
+                    Ar_Append aQueue, rNextCell
+                    Ar_Append aVisited, rNextCell
+                endif
+            endif
+        loop
+    loop
+    
+    if eval (Ar_Size aQueue) != -1
+        if eval bLogging
+            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Could not find a path.")
+        endif
+        SetFunctionValue 0
+    endif
+end
