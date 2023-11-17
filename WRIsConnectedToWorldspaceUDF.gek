@@ -5,7 +5,7 @@ array_var aVisited
 ref rEdge
 
 begin function { rEdge }
-    int bLogging ;= (rEdge == (GFFM "OldWorldBlues.esm" "E62B"))
+    int bLogging ;= (rEdge == (GFFM "FalloutNV.esm" "131562"))
     ref rNode = rEdge.gpc
     if eval !(rNode)
         rNode = rEdge.gpw
@@ -54,6 +54,7 @@ begin function { rEdge }
         
         foreach array_var entry <- aDoors
             ref rDoor = *entry
+            bLogging = (rDoor == (GFFM "FalloutNV.esm" "131562"))
             if eval bLogging
                 PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Checking door " + rDoor.RefToString + " in " + GetEditorID rSearch)
             endif

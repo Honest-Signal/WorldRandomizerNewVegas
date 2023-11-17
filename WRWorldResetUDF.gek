@@ -4,22 +4,25 @@ scn WRWorldResetUDF
 ; This should reset all the changed doors, since door changes persist across saves in a session.
 
 begin function { }
-	array_var aAllDoors = GetArrayVar aAllDoors WRQuestStart
+	array_var aEntry = RefMapFirst "*aAllDoors"
 
-	foreach (array_var aEntry) <- aAllDoors
-		string_var sKey = aEntry["key"]
-		array_var aDoor = aEntry["value"]
+	while (aEntry != Ar_Null)
+    
+        ref rDoor = aEntry[0]
+    
+		array_var aDoor = sv_split aEntry[1] ","
 
-		ref rDoor = StringToRef $sKey
-		float fX = aDoor[0]
-		float fY = aDoor[1]
-		float fZ = aDoor[2]
-		float fRot = aDoor[3]
-		string_var sKeystring = "Main/" + sKey
-		ref rLink = StringToRef (GetINIString $sKeystring "WROriginalLinks.ini")
+		float fX = #aDoor[0]
+		float fY = #aDoor[1]
+		float fZ = #aDoor[2]
+		float fRot = #aDoor[3]
+        string_var sLink = aDoor[4]
+		ref rLink = StringToRef $sLink
 		
 		while rLink.GetTeleportDoor != rDoor
 			rLink.SetDoorTeleport rDoor fX fY fZ fRot
 		loop
+        
+        aEntry = RefMapNext "*aAllDoors"
 	loop
 end

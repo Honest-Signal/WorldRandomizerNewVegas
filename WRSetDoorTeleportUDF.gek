@@ -249,12 +249,17 @@ begin function { toDoor }
 
 	;Currently necessary because sometimes SetDoorTeleport doesn't go through? Slow though :/
     
-    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Size comparison: " + $(Ar_Size aAllDoors) + " " + $(Ar_Size WRQuestStart.aAllDoors) + " " + $(Ar_Size (GetArrayVar "aAllDoors" WRQuestStart)))
-    ; array_var aAllDoors = GetINISection "aAllDoors" "WRaAllDoors"
-	fX = WRQuestStart.aAllDoors[toDoor.RefToString][0]
-	fY = WRQuestStart.aAllDoors[toDoor.RefToString][1]
-	fZ = WRQuestStart.aAllDoors[toDoor.RefToString][2]
-	fRot = WRQuestStart.aAllDoors[toDoor.RefToString][3]
+    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| toDoor: " + toDoor.RefToString + "'s string: " + (toDoor.RefMapGetStr "*aAllDoors"))
+    string_var sDoor = toDoor.RefMapGetStr "*aAllDoors"
+    while (sv_length sDoor) < 1
+        sDoor = toDoor.RefMapGetStr "*aAllDoors"
+    loop
+    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| toDoor: " + toDoor.RefToString + "'s string: " + sDoor)
+    array_var aDoor = sv_split sDoor ","
+	fX = #aDoor[0]
+	fY = #aDoor[1]
+	fZ = #aDoor[2]
+	fRot = #aDoor[3]
     ; if eval toDoor.gpc == WRGreenHouse || fromDoor.gpc == WRGreenHouse
         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + fromDoor.RefToString + " -> " + toDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
     ; endif

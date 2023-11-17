@@ -21,6 +21,8 @@ begin function { }
 				Ar_Append aWhitelist (GFFM "DeadMoney.esm" "29EF")		;NVDLC01VaultElevatorREF -- Sierra Madre vault elevator door
                 Ar_Append aWhitelist (GFFM "DeadMoney.esm" "607A")      ;NVDLC01SuitesElevatorREF -- Link to previous
 			elseif eval sModName == "HonestHearts.esm"
+                Ar_Append aWhitelist (GFFM "HonestHearts.esm" "101B8")  ;NVDLC02MojaveToZionDoorREF -- Scripted shut
+                Ar_Append aWhitelist (GFFM "HonestHearts.esm" "A66E")   ;NVDLC02ZionToMojaveDoorREF -- Scripted shut
 			elseif eval sModName == "LonesomeRoad.esm"
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "8481") 	;TempleEntrance -- DCC2 switches to this if disabled
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "3D1B")	;TempleExit -- DCC1 switches to this if disabled

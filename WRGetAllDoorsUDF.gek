@@ -1,12 +1,12 @@
 scn WRGetAllDoorsUDF
 
 begin function { }
-	array_var aAllDoors
+	; array_var aAllDoors
 
 	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Gathering all doors..." )
 ;	WriteStringToFile "WR_all_edges.txt" 0 "graph {%r"
 	array_var aGLTA = Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs
-	aAllDoors = Ar_Construct "Stringmap"
+	; aAllDoors = Ar_Construct "Stringmap"
 ;	array_var aAlreadyEdge = Ar_Construct "Array"
 	int iIndex = -1
 	while (iIndex += 1) < (Ar_Size aGLTA)
@@ -42,7 +42,9 @@ begin function { }
            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
         endif
         
-		aAllDoors[rDoor.RefToString] = Ar_List fX fY fZ fRot rLink ;rParent
+        string_var sEntry = $fX + "," + $fY + "," + $fZ + "," + $fRot + "," + rLink.RefToString
+		rDoor.RefMapSetStr "*aAllDoors" $sEntry ;Ar_List fX fY fZ fRot rLink ;rParent
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rDoor string: " + (rDoor.RefMapGetStr "*aAllDoors"))
 		AddFormToFormList WRAllDoors rDoor
         
         ; if rDoor.gpc == WRGreenHouse
@@ -82,7 +84,7 @@ begin function { }
 ;	PrintF "WR_all_edges.txt" "}"
 ;	iDisconnectivity = Call WRConnectivityUDF
 	
-	WRQuestStart.aAllDoors = aAllDoors
+	; WRQuestStart.aAllDoors = aAllDoors
     ; SetINISection "aAllDoors" aAllDoors "WRaAllDoors" 
 
 end
