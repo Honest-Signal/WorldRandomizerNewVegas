@@ -109,6 +109,7 @@ begin gamemode
                 sv_destruct sDoorWorld
             endif
 		loop
+        aGLTA = Ar_Null
         
         Call WRGetAllDoorsUDF
         ; Call WRConnectivityUDF
@@ -117,21 +118,27 @@ begin gamemode
 		SetEventHandler "OnCellEnter" WROnCellEnterUDF
 	endif
 
-	if eval iVersions != 0 ;|| (GetStage VCG01) < 55
-		; if eval IsModLoaded "Fallout3.esm" && (GetStage (GFFM "Fallout3.esm" "14E83")) > 5
-		; else
+	if eval iVersions != 0 || (GetStage VCG01) < 55
+		if eval IsModLoaded "Fallout3.esm" && (GetStage (GFFM "Fallout3.esm" "14E83")) > 5
+		else
 			return
-		; endif
+		endif
 	endif
 
 	if GetGameLoaded
 		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Save file loaded." )
 		aDoorsToReset = Ar_Construct "Array"
 		SetGameMainLoopCallback WRVariableCheckerUDF 1 60 9
+		udfOnlyDoorRefs = ({array_var aIter} => (*aIter).GetTeleportDoor)
 		; iStartEvents = 1
+        
+        if eval (Ar_Size aShuffle) < 1 && fID == 0
+            fID = rand 0 100
+        endif
         
         iSetShuffle = (AuxVarGetFlt "*fID" 0 WRQuestStart) != fID
         AuxVarSetFlt "*fID" fID 0 WRQuestStart
+        sv_destruct sShuffleKey
 
 		if eval (Ar_Size aWatchedVariables) < 1
 			aWatchedVariables = Ar_Construct "Stringmap"
@@ -413,7 +420,7 @@ begin gamemode
                         iCount += 1
                         iLoops = 0
                         aRand = Ar_Range 0 (Ar_Size aDoors)-1
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
                     endif
                 endif
             endif
@@ -443,7 +450,7 @@ begin gamemode
             endif
             Ar_Append aRemove iRandIndex
             Ar_Erase aRand iRandIndex
-            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + ", rEdge1Link: " + rEdge1Link.RefToString)
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + ", rEdge1Link: " + rEdge1Link.RefToString)
             
             if eval bBreakLoop
                 bBreakLoop = 0
@@ -470,7 +477,7 @@ begin gamemode
             endif
             Ar_Append aRemove iRandIndex
             Ar_Erase aRand iRandIndex
-            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + ", rEdge2Link: " + rEdge2Link.RefToString)
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + ", rEdge2Link: " + rEdge2Link.RefToString)
             
             if bBreakLoop
                 rEdge1.call WRSetDoorTeleportUDF rEdge2Link
@@ -486,12 +493,6 @@ begin gamemode
                     foreach (array_var aEntry) <- aRemove
                         Ar_Erase aDoorsNoLink aEntry["value"]
                     loop
-                    if eval (Ar_Find rEdge1Link aDoorsNoLink) == Ar_BadNumericIndex
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge1Link.RefToString + " is possibly whitelisted.")
-                    endif
-                    if eval (Ar_Find rEdge2Link aDoorsNoLink) == Ar_BadNumericIndex
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge2Link.RefToString + " is possibly whitelisted.")
-                    endif
                     ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge1.RefToString + " <-> " + rEdge2Link.RefToString)
                     ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge2.RefToString + " <-> " + rEdge1Link.RefToString)
                     iIndex = (Ar_Size aDoorsNoLink)-1
@@ -516,7 +517,7 @@ begin gamemode
                 iCount += 1
                 iLoops = -1
                 aRand = Ar_Range 0 (Ar_Size aDoorsNoLink)-1
-                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
             endif
             bBreakLoop = 0
             rEdge1 = rEdge2 = rEdge1Link = rEdge2Link = 0

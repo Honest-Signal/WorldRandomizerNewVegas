@@ -87,6 +87,12 @@ begin function { toDoor }
 		else
 			iModDoor = -1
 		endif
+    elseif eval rSelf.GetDestroyed
+        rSelf.AuxVarSetFlt "IsDestroyed" 1
+        iModDoor = 3
+    elseif eval (rSelf.AuxVarGetFlt "IsDestroyed") && !(rSelf.GetDestroyed)
+        rSelf.AuxVarErase "IsDestroyed"
+        iModDoor = -3
 	endif
 
 	;====================================================================================
@@ -179,13 +185,14 @@ begin function { toDoor }
 		SetFormFlag fromDoor 256 0 ;Unsetting the inaccessibility
 	endif
 
-	if iModDoor == 1
+	if eval iModDoor == 1 || iModDoor == 3
 		SetFormFlag toDoor 256 1
-	elseif iModDoor == -1
+	elseif eval iModDoor == -1 || iModDoor == -3
 		SetFormFlag toDoor 256 0
-	elseif iModDoor == 2
+    endif
+	if eval iModDoor >= 2
 		SetFormFlag fromDoor 256 1
-	elseif iModDoor == -2
+	elseif eval iModDoor <= -2
 		SetFormFlag fromDoor 256 0
 	endif
 	;====================================================================================

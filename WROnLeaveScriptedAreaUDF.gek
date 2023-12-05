@@ -1,0 +1,138 @@
+scn WROnLeaveScriptedAreaUDF
+
+ref rCell
+
+ref Follower1
+ref Follower2
+
+begin function { rCell }
+    if eval rCell == TOPSCasino ;TopsInteriorDoorScript
+        if VDialogueTops.Holdout == 0
+			TopsFriskingTriggerREF.Activate Player 1
+		else
+			TopsFriskingHoldoutTriggerREF.Activate Player 1
+		endif
+		Activate
+		set VDialogueTops.PlayerFrisked to 0
+		set VDialogueTops.Unarmed to 0
+		VTopsGreeter1REF.ResetAI
+		if GetQuestRunning VTopsSecurity == 1
+			StopQuest VTopsSecurity
+			set VMQTops.StoleWeaponsBack to 0
+		endif
+		if VMQTops.BennyFleeing == 1
+			if BennyREF.GetDead == 1
+				set VMQTops.BennyFleeing to 0
+			else
+				setObjectiveDisplayed VMQTops 40 1
+				BennySuiteDoorREF.Unlock
+				if VStoryState < 20
+				     Set VStoryState to 20
+				endif
+				if GetObjectiveDisplayed VMQTops 18
+				     SetObjectiveDisplayed VMQTops 18 0
+				endif
+				if GetObjectiveDisplayed VMQTops 42
+				     SetObjectiveDisplayed VMQTops 42 0
+				endif
+				if GetObjectiveDisplayed VMQTops 10 && GetObjectiveCompleted VMQTops 10 == 0
+		     		SetObjectiveDisplayed VMQTops 10 0
+				endif
+				if GetObjectiveDisplayed VMQTops 5 && GetObjectiveCompleted VMQTops 5 == 0
+		     		SetObjectiveDisplayed VMQTops 5 0
+				endif
+				set VStoryEventBennyFled to 1
+				BennyREF.Disable
+				VFortBennyREF.Enable
+				if vLegionaryVulpesIncultaREF.GetDead == 0 && GetStageDone VMQ02 110 != 1
+				     VVulpesIncultaStripRef.Enable
+			     	vLegionaryVulpesIncultaREF.Disable
+				else
+					If GetStageDone VMQ02 110 != 1
+     					AlerioRef.Enable
+					Endif
+				endif
+			endif
+		endif
+		if GetObjectiveDisplayed VMQTops 30
+			setObjectiveCompleted VMQTops 30 1
+			if VStoryEventBennyFled == 1
+				SetStage VMQTops 40
+				SetObjectiveDisplayed VMQTops 40 1
+			else
+				SetStage VMQTops 42
+				SetObjectiveDisplayed VMQTops 42 1
+			endif
+			set VStoryEventSurvivedTrap to 1
+            set VMQTops.StoleWeaponsBack to 0
+		endif
+        if (VMQTops.SwankHelp < 2)
+            StartQuest VTopsSecurity
+        endif
+        
+    elseif eval rCell == ULCasino
+        VMS18WhiteGloveGreeterREF.MoveTo VULGreeterMarkerREF
+		if (VMS18.bHoldoutFrisk)
+			VUltraLuxeFriskingHoldoutTriggerREF.Activate Player 1;
+			set VMS18.bHoldoutFrisk to 0;
+		else
+			VUltraLuxeFriskingTriggerREF.Activate Player 1
+		endif
+		
+		VMS18WhiteGloveGreeterREF.ResetAI
+		if GetQuestRunning VUltraLuxeSecurity == 1
+			StopQuest VUltraLuxeSecurity
+		endif
+		
+		set VMQTops.StoleWeaponsBack to 0
+
+		; The below code activates the door on a slight delay. The delay addresses a bug where if weapons were returned to the companions during a transition,
+		; the weapons would not load in properly after the transition and companions wouldn't be able to use them until they reloaded a save.		
+		set VGenericTimer.rRef to GetSelf;
+		set VGenericTimer.nEvent to 10;
+		set VGenericTimer.fTimer to 0.3;
+		DisablePlayerControls 0 1 1;
+		StartQuest VGenericTimer;
+        
+    elseif eval rCell == Gomorrah01 ;GomorrahHotelDoorScript
+        ;showwarning "Interior Door, should only activate when inside"
+		enableplayercontrols
+		set vdialoguegomorrah.iWeaponAlert to 0
+		set vDialogueGomorrah.bGunsAllowed to 0
+		if vDialogueGomorrah.iPlayerRemFaction == 1
+			player.addtofaction OmertaFaction 0
+			set vDialogueGomorrah.iPlayerRemFaction to 0
+		endif
+		if vDialogueGomorrah.iInGomorrah == 0
+			vGOMEntranceGuardREF.ResetAI
+			return
+		endif
+		if vDialogueGomorrah.iInGomorrah >= 1
+			set vDialogueGomorrah.iInGomorrah to 0
+			vGOMPlayerEquipmentContainer.removeallitems player
+			set Follower1 to GomorrahCasinoEnterTriggerREF.Companion1REF
+			set Follower2 to GomorrahCasinoEnterTriggerREF.Companion2REF
+			if Follower1 != 0
+				vGOMCompanion1EquipmentContainer.RemoveAllItems Follower1
+				set GomorrahCasinoEnterTriggerREF.Companion1REF to 0
+			endif
+			if Follower2 != 0
+				vGOMCompanion2EquipmentContainer.RemoveAllItems Follower2
+				set GomorrahCasinoEnterTriggerREF.Companion2REF to 0
+			endif
+		endif
+    
+        if vGomEntrancEGuardRef.GetDead  == 0
+			vGomEntranceGuardRef.MoveTo VGOMEntranceGuardMarker
+			vGOMEntranceGuardREF.ResetAI
+		endif
+		if Follower1 != 0
+			vGOMCompanion1EquipmentContainer.RemoveAllItems Follower1
+			set GomorrahCasinoEnterTriggerREF.Companion1REF to 0
+		endif
+		if Follower2 != 0
+			vGOMCompanion2EquipmentContainer.RemoveAllItems Follower2
+			set GomorrahCasinoEnterTriggerREF.Companion2REF to 0
+		endif
+    endif
+end

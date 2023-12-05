@@ -16,11 +16,20 @@ begin function {rDoor, rActor}
 		ref rLink = rDoor.GetTeleportDoor
 		rLink.unlock ;In case you have a case like a lockpick door going to 
 		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Player activated door " + rDoor.RefToString + " to " + rLink.RefToString + ".")
+        
+        if eval rDoor.GPC == Gomorrah01 || rDoor.GPC == ULCasino || rDoor.GPC == TOPSCasino
+            CallAfter 0 WROnLeaveScriptedAreaUDF 0 (rDoor.GPC)
+        endif
 
 		;Moves the BoS destruction activator to wherever you exit
 		if rDoor == vHVLevel02MainDoorREF && VDialogueHiddenValley.GeneratorSetToBlow == 1
 			HVBunkerExplosionTriggerREF.moveto rLink
 		endif
+        
+        ; Used to handle some quest objective things for the endgame, to more properly direct players hopefully
+        if rDoor == VHDLegateCampExtGateREF
+            vHDBattleController.iCurrentZone = 5
+        endif
 
 		;Moves RS Charlie destruction activator to wherever you exit
 		if (VStoryState >= 30 || GetHasNote VFreeformNovacRangerStationNote)
