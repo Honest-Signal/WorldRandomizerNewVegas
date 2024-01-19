@@ -197,58 +197,55 @@ begin function { toDoor }
 	endif
 	;====================================================================================
 	;Changing door prompts
-
-	if eval TestExpr WRQuestStart.aShuffle[rSelf.RefToString]
-		int bObscure = GetVariable "bObscure" WRQuestStart
-		if fromDoor.GetRefActivationPromptOverride || bObscure == 1
-			ref rOldCell
-			ref rNewCell
+	int bObscure = GetVariable "bObscure" WRQuestStart
+	if fromDoor.GetRefActivationPromptOverride || bObscure == 1
+		ref rOldCell
+		ref rNewCell
 	
-			if toDoor == 0
-				Print "toDoor is 0, rSelf: " + GetFormIdString fromDoor
-			endif
-	
-			if IsFormValid (fromDoor.GetTeleportDoor.gpc)
-				rOldCell= fromDoor.GetTeleportDoor.gpc
-			else
-				rOldCell= fromDoor.GetTeleportDoor.gpw
-			endif
-	
-			if IsFormValid (toDoor.gpc)
-				rNewCell= toDoor.gpc
-			else
-				rNewCell= toDoor.gpw
-			endif
-			string_var sDestination = $rNewCell
-			
-			if bObscure == 1
-				if eval WRQuestStart.aDoorsUsed[rSelf.RefToString] == 0 && WRQuestStart.aDoorsUsed[fromDoor.RefToString] == 0
-					sDestination = "???"
-				endif
-			endif
-			
-	
-			string_var sOldActivation = ""
-			if fromDoor.GetRefActivationPromptOverride
-				sOldActivation = fromDoor.GetRefActivationPromptOverride
-			endif
-			;print "rOldCell: " + $rOldCell + " sOldActivation: " + $sOldActivation
-			;print "sv_find rOldCell: " + $(sv_find ($rOldCell) sOldActivation)
-			;print "sv_find ???: " + $(sv_find "???" sOldActivation) 
-			if (sv_find ($rOldCell) sOldActivation) > -1
-				string_var sReplace = $rOldCell + "|" + sDestination
-				sv_replace $sReplace sOldActivation
-				fromDoor.SetRefActivationPromptOverride $sOldActivation
-			elseif (sv_find "???" sOldActivation) > -1
-				string_var sReplace = "???|" + sDestination
-				sv_replace $sReplace sOldActivation
-				fromDoor.SetRefActivationPromptOverride $sOldActivation
-			else
-				string_var sActivation = "Enter " + sDestination
-				fromDoor.SetRefActivationPromptOverride $sActivation
-			endif
-			;print "New activation prompt: " + $fromDoor.GetRefActivationPromptOverride
+		if toDoor == 0
+			Print "toDoor is 0, rSelf: " + GetFormIdString fromDoor
 		endif
+	
+		if IsFormValid (fromDoor.GetTeleportDoor.gpc)
+			rOldCell= fromDoor.GetTeleportDoor.gpc
+		else
+			rOldCell= fromDoor.GetTeleportDoor.gpw
+		endif
+	
+		if IsFormValid (toDoor.gpc)
+			rNewCell= toDoor.gpc
+		else
+			rNewCell= toDoor.gpw
+		endif
+		string_var sDestination = $rNewCell
+		
+		if bObscure == 1
+			if eval WRQuestStart.aDoorsUsed[rSelf.RefToString] == 0 && WRQuestStart.aDoorsUsed[fromDoor.RefToString] == 0
+				sDestination = "???"
+			endif
+		endif
+		
+	
+		string_var sOldActivation = ""
+		if fromDoor.GetRefActivationPromptOverride
+			sOldActivation = fromDoor.GetRefActivationPromptOverride
+		endif
+		;print "rOldCell: " + $rOldCell + " sOldActivation: " + $sOldActivation
+		;print "sv_find rOldCell: " + $(sv_find ($rOldCell) sOldActivation)
+		;print "sv_find ???: " + $(sv_find "???" sOldActivation) 
+		if (sv_find ($rOldCell) sOldActivation) > -1
+			string_var sReplace = $rOldCell + "|" + sDestination
+			sv_replace $sReplace sOldActivation
+			fromDoor.SetRefActivationPromptOverride $sOldActivation
+		elseif (sv_find "???" sOldActivation) > -1
+			string_var sReplace = "???|" + sDestination
+			sv_replace $sReplace sOldActivation
+			fromDoor.SetRefActivationPromptOverride $sOldActivation
+		else
+			string_var sActivation = "Enter " + sDestination
+			fromDoor.SetRefActivationPromptOverride $sActivation
+		endif
+		;print "New activation prompt: " + $fromDoor.GetRefActivationPromptOverride
 	endif
 	;====================================================================================
 	;====================================================================================
@@ -261,15 +258,12 @@ begin function { toDoor }
     while (sv_length sDoor) < 1
         sDoor = toDoor.RefMapGetStr "*aAllDoors"
     loop
-    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| toDoor: " + toDoor.RefToString + "'s string: " + sDoor)
+    
     array_var aDoor = sv_split sDoor ","
 	fX = #aDoor[0]
 	fY = #aDoor[1]
 	fZ = #aDoor[2]
 	fRot = #aDoor[3]
-    ; if eval toDoor.gpc == WRGreenHouse || fromDoor.gpc == WRGreenHouse
-        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + fromDoor.RefToString + " -> " + toDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
-    ; endif
 
 	while fromDoor.GetTeleportDoor != toDoor
 		fromDoor.SetDoorTeleport toDoor fX fY fZ fRot
@@ -279,9 +273,5 @@ begin function { toDoor }
 		endif
 	loop
     
-    ; if eval toDoor.gpc == WRGreenHouse || fromDoor.gpc == WRGreenHouse
-        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + fromDoor.RefToString + " -> " + toDoor.RefToString + " Teleport pos verify: " + $fromDoor.GetDoorTeleportX + " " + $fromDoor.GetDoorTeleportY + " " + $fromDoor.GetDoorTeleportZ + " " + $fromDoor.GetDoorTeleportRot)
-    ; endif
-;	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set door " + fromDoor.RefToString + " to " + toDoor.RefToString )
-;	PrintF "WRSetDoorTeleportUDF.txt" "  Verification: fromDoor.GetTeleportDoor: " + GetFormIdString rTeleportDoor
+	; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set door " + fromDoor.RefToString + " to " + toDoor.RefToString )
 end

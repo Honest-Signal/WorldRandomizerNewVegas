@@ -116,6 +116,11 @@ begin gamemode
         
         SetEventHandler "OnActivate" WROnActivateDoorsUDF "first"::WRAllDoors "second"::playerref
 		SetEventHandler "OnCellEnter" WROnCellEnterUDF
+        SetEventHandler "OnCrosshairOn:28" (begin function {rDoor}
+            if eval aDoorsToReset && rDoor.GetTeleportDoor
+                Ar_Append aDoorsToReset rDoor
+            endif
+        end) 
 	endif
 
 	if eval iVersions != 0 || (GetStage VCG01) < 55
