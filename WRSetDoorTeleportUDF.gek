@@ -13,13 +13,12 @@ begin function { toDoor }
 	string_var strToDoor = GetFormIDString toDoor
 
 	int iModDoor = 0
-   
+    int iYupIndex = Call WRGetYUPIndexUDF
 
 	;From door dealings
     if eval rSelf.gpw == GreenhouseWorld01
         fromDoor = call WRGetGreenHouseDoorUDF rSelf
 	elseif eval strFromDoor == "000F3C5F"
-		int iYUPIndex = Call WRGetYUPIndexUDF
 		if eval iYUPIndex != -1
 			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64ED"
 		endif
@@ -100,20 +99,20 @@ begin function { toDoor }
 	if eval toDoor.gpw == GreenhouseWorld01
         toDoor = call WRGetGreenHouseDoorUDF toDoor
 	elseif eval strToDoor == "000F3C5F"
-		if IsModLoaded "YUP - Base Game + All DLC.esm"
-			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64ED"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64ED"
 		endif
 	elseif eval strToDoor == "0016A9B8"
-		if IsModLoaded "YUP - Base Game + All DLC.esm"
-			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64EE"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EE"
 		endif
 	elseif eval strToDoor == "000F3C5E"
-		if IsModLoaded "YUP - Base Game + All DLC.esm"
-			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64EC"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EC"
 		endif
 	elseif eval strToDoor == "0016A9B2"
-		if IsModLoaded "YUP - Base Game + All DLC.esm"
-			let toDoor := GetFormFromMod "YUP - Base Game + All DLC.esm" "64EB"
+		if eval iYUPIndex != -1
+			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EB"
 		endif
 	elseif eval strToDoor == "00152C02" ;RSCharlieDoor
 		if toDoor.GetDisabled

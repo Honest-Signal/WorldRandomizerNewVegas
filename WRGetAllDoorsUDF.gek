@@ -6,6 +6,10 @@ begin function { }
 	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Gathering all doors..." )
 ;	WriteStringToFile "WR_all_edges.txt" 0 "graph {%r"
 	array_var aGLTA = Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs
+    array_var aWorldspacesDoorCount = ar_Construct "Stringmap"
+    array_var aOptions = Ar_Construct "Map" ;This will hold all mods with a link door, for plugin selection.
+    int iYUPindex = call WRGetYUPIndexUDF
+    string_var sMenu = "^World Randomizer Plugin Selection^Select the plugins to include:"
 	; aAllDoors = Ar_Construct "Stringmap"
 ;	array_var aAlreadyEdge = Ar_Construct "Array"
 	int iIndex = -1
@@ -20,6 +24,16 @@ begin function { }
 ;		if rParent == 0
 ;			rParent = rDoor.gpw
 ;		endif
+
+        if eval rDoor.gpw
+            string_var sDoorWorld = RefToString (rDoor.gpw)
+            if eval Ar_HasKey aWorldspacesDoorCount sDoorWorld
+                Ar_Append aWorldspacesDoorCount[sDoorWorld] rDoor
+            else
+                aWorldspacesDoorCount[sDoorWorld] = Ar_List rDoor
+            endif
+            sv_destruct sDoorWorld
+        endif
         
         ;WRGreenHouse correction
         if rDoor.gpc == WRGreenHouse
@@ -37,9 +51,30 @@ begin function { }
                 fY -= 40
             endif
            
-           fRot -= 90
+            fRot -= 90
            
-           ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
+            ;Special cases because I have issues.
+            ;To be more precise, this is checking if the unused doors in the greenhouse are in fact being used.
+            if eval rDoor == WRGreenHouseDoor27 && (GFFM "FalloutNV.esm" "160D56").GetTeleportDoor
+                rDoor.GetPosEx fX fY fZ
+                fZ += 64
+                rDoor.Enable
+            elseif eval rDoor == WRGreenHouseDoor28 && (GFFM "FalloutNV.esm" "160D57").GetTeleportDoor
+                rDoor.GetPosEx fX fY fZ
+                fZ -= 64
+                rDoor.Enable
+            elseif eval rDoor == WRGreenHouseDoor29 && (GFFM "FalloutNV.esm" "160D58").GetTeleportDoor
+                rDoor.GetPosEx fX fY fZ
+                fZ -= 64
+                rDoor.Enable
+            endif
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " Teleport pos: " + $fX + " " + $fY + " " + $fZ + " " + $fRot)
+        else
+            int iModIndex = GetSourceModIndex rDoor
+            if eval iModIndex != iYUPIndex
+                aOptions[iModIndex] = 1
+            endif
+            AuxVarSetRef ("*" + $iModIndex) rDoor -1 WRQuestStart
         endif
         
         string_var sEntry = $fX + "," + $fY + "," + $fZ + "," + $fRot + "," + rLink.RefToString
@@ -79,7 +114,18 @@ begin function { }
 ;		endif
 ;		PrintF "WR_all_edges.txt" $sEdge + "]"
 	loop
+    
+    aOptions = Ar_Keys aOptions 
+    iIndex = -1
+    while (iIndex += 1) < (Ar_Size aOptions)
+        sMenu = $sMenu + "| " + GetModName (aOptions[iIndex])
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Discovered mod: " + GetModName (aOptions[iIndex]))
+    loop
 
+    sMenu = $sMenu + "|Select All|Done"
+    WRQuestStart.aOptions = aOptions
+    WRQuestStart.aWorldspacesDoorCount = aWorldspacesDoorCount
+    WRQuestStart.sMenu = sMenu
 	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Done." )
 ;	PrintF "WR_all_edges.txt" "}"
 ;	iDisconnectivity = Call WRConnectivityUDF

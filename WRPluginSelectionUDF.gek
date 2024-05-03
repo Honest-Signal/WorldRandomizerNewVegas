@@ -32,5 +32,14 @@ begin function {iButton}
 		WRQuestStart.sMenu = sMenu
 	else
 		WRQuestStart.iOptionSelecting = 2
+        int iIndex = -1
+		string_var sMenu = WRQuestStart.sMenu
+		while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
+			WRQuestStart.aOptionsSelected[iIndex] = 1
+			iButton = WRQuestStart.aOptions[iIndex]
+            string_var sReplace = "* " + GetModName iButton + "| " + GetModName iButton
+			sv_replace $sReplace sMenu
+		loop
+        WRQuestStart.sMenu = sMenu
 	endif
 end

@@ -15,8 +15,9 @@ begin function { }
 		ref rDoor3 = GFFM $sModName "64ED"
 		ref rDoor4 = GFFM $sModName "64EE"
 
-		;Basically this should be a YUP... I hope
-		if eval rDoor1 && rDoor1.GetTeleportDoor && rDoor2 && rDoor2.GetTeleportDoor && rDoor3 && rDoor3.GetTeleportDoor && rDoor4 && rDoor4.GetTeleportDoor
+		;Basically this should be a YUP... I hope.
+        ;This looks like it should actually short-circuit properly and not bug out now!
+		if eval (IsReference rDoor1 && rDoor1.GetTeleportDoor && IsReference rDoor2 && rDoor2.GetTeleportDoor && IsReference rDoor3 && rDoor3.GetTeleportDoor && IsReference rDoor4 && rDoor4.GetTeleportDoor)
 			iModIndex = iIndex
 			break
 		endif

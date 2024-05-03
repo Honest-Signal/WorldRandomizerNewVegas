@@ -44,7 +44,7 @@ ref udfOnlyDoorRefs
 string_var sMenu
 string_var sShuffleKey
 
-begin gamemode
+begin menumode
 	if GetGameRestarted
 		WriteStringToFile "WRLog.txt" 0 "WorldRandomizer started. Verifying plugin versions...%r"
 		iVersions = 0
@@ -95,22 +95,6 @@ begin gamemode
 
 		iIndex = -1
 		udfOnlyDoorRefs = ({array_var aIter} => (*aIter).GetTeleportDoor)
-		array_var aGLTA = Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs
-        array_var aWorldspacesDoorCount = ar_Construct "Stringmap"
-		while (iIndex += 1) < (Ar_Size aGLTA)
-			ref rDoor = aGLTA[iIndex]
-            if eval rDoor.gpw
-                string_var sDoorWorld = RefToString (rDoor.gpw)
-                if eval Ar_HasKey aWorldspacesDoorCount sDoorWorld
-                    Ar_Append aWorldspacesDoorCount[sDoorWorld] rDoor
-                else
-                    aWorldspacesDoorCount[sDoorWorld] = Ar_List rDoor
-                endif
-                sv_destruct sDoorWorld
-            endif
-		loop
-        aGLTA = Ar_Null
-        
         Call WRGetAllDoorsUDF
         ; Call WRConnectivityUDF
         
@@ -122,7 +106,9 @@ begin gamemode
             endif
         end) 
 	endif
+end
 
+begin gamemode
 	if eval iVersions != 0 || (GetStage VCG01) < 55
 		if eval IsModLoaded "Fallout3.esm" && (GetStage (GFFM "Fallout3.esm" "14E83")) > 5
 		else
@@ -284,24 +270,27 @@ begin gamemode
         iRandomize = 0
         
     elseif eval iRandomize == 2 ;Getting ready to randomize
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Resetting world.")
         aShuffle = Ar_Construct "Stringmap"
         Call WRWorldResetUDF
         
         ;Grabs all doors from the specified mods
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Gathering selected doors.")
         aDoors = Ar_Construct "Array"
         array_var aModsUsed = Ar_Construct "Array"
         iIndex = -1
         while (iIndex += 1) < (Ar_Size aOptions)
             if eval aOptionsSelected[iIndex]
                 int iModIndex = aOptions[iIndex]
-                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Including mod " + $(GetNthModName iModIndex) + " in randomization" )
-                array_var aAddDoors = Ar_Filter (GLTA 58 iModIndex) WRQuestStart.udfOnlyDoorRefs
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Including mod " + $(GetNthModName iModIndex) + " in randomization." )
+                array_var aAddDoors = AuxVarGetAsArr ("*" + $iModIndex) WRQuestStart ;Ar_Filter (GLTA 58 iModIndex) WRQuestStart.udfOnlyDoorRefs
                 Ar_Cat aDoors aAddDoors
                 Ar_Append aModsUsed iModIndex
             endif
         loop
         
         ;Filters out doors according to whitelist and excluded mods
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Filtering out doors...")
         iIndex = Ar_Size aDoors
         array_var aDoorsNoLink = Ar_Construct "Array"
         Call WRGenerateWhitelistUDF
@@ -330,7 +319,14 @@ begin gamemode
         iIndex = 0
         array_var aSpareDoors = Ar_List WRGreenHouseDoor23 WRGreenHouseDoor24 WRGreenHouseDoor25
         while (Ar_Size aDoorsNoLink) % 4
-            Ar_Append aDoorsNoLink aSpareDoors[iIndex]
+            ref rSpareDoor = aSpareDoors[iIndex]
+            Ar_Append aDoorsNoLink rSpareDoor
+            rSpareDoor.SetRefFlag 256 0
+            iIndex += 1
+        loop
+        while iIndex < 3    ;Unused spare doors are inaccessible.
+            ref rSpareDoor = aSpareDoors[iIndex]
+            rSpareDoor.SetRefFlag 256 1
             iIndex += 1
         loop
         
@@ -339,6 +335,7 @@ begin gamemode
         iCount = 0
         iSize = (Ar_Size aDoors) + (Ar_Size aDoorsNoLink)
         bBreakLoop = 0
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Starting randomization...")
         iRandomize = 3
         aRand = Ar_Range 0 (Ar_Size aDoors)-1
         
@@ -376,9 +373,13 @@ begin gamemode
             endif
             
             if eval bBreakLoop
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + " -> rEdge2Link: " + rEdge2Link.RefToString)
                 rEdge1.call WRSetDoorTeleportUDF rEdge2Link
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2Link: " + rEdge2Link.RefToString + " -> rEdge1: " + rEdge1.RefToString)
                 rEdge2Link.call WRSetDoorTeleportUDF rEdge1
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + " -> rEdge1Link: " + rEdge1Link.RefToString)
                 rEdge2.call WRSetDoorTeleportUDF rEdge1Link
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1Link: " + rEdge1Link.RefToString + " -> rEdge2: " + rEdge2.RefToString)
                 rEdge1Link.call WRSetDoorTeleportUDF rEdge2
                 ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| edge1 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge1) + " edge2 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge2))
                 
@@ -586,22 +587,8 @@ begin gamemode
 	if eval iOptionSelecting < 2
 		if eval iOptionSelecting == 0
             ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| In iOptionSelecting = 0")
-			iIndex = -1
-			sMenu = "^World Randomizer Plugin Selection^Select the plugins to include:"
-			aOptions = Ar_Construct "Array"
-			aOptionsSelected = Ar_List 0
-            int iYUPindex = call WRGetYUPIndexUDF
-			while (iIndex += 1) < GetNumLoadedMods
-                if eval (GetModName iIndex) == "WorldRandomizer" || iIndex == iYUPindex
-                    continue
-                endif
-				if eval (Ar_Size (Ar_Filter (GLTA 58 iIndex) WRQuestStart.udfOnlyDoorRefs)) > 0
-					sMenu = $sMenu + "| " + GetModName iIndex
-					Ar_Append aOptions iIndex
-				endif
-			loop
+            aOptionsSelected = Ar_Construct "array"
 			Ar_Resize aOptionsSelected (Ar_size aOptions) 0
-			sMenu = $sMenu + "|Select All|Done"
 			iOptionSelecting = 1
 		endif
 		MessageBoxExAlt WRPluginSelectionUDF $sMenu
@@ -642,5 +629,4 @@ begin gamemode
 	if eval IsImageSpaceActive NVCaveEnteringISFX
 		rimod NVCaveEnteringISFX
 	endif
-
 end
