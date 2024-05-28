@@ -3,14 +3,20 @@ scn WRAreParentsDifferentUDF
 ref rNode1
 ref rNode2
 
-begin function { rNode1 rNode2 } 
-	if eval rNode1.gpc && rNode2.gpc
+begin function { rNode2 }
+    rNode1 = GetSelf
+    if eval !(IsReference rNode1) || !(IsReference rNode2)
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| WARNING: Null door(s) in WRAreParentsDifferentUDF: Doors present: " + (GetFormIDString rNode1) + " and " + (GetFormIDString rNode2))
+        SetFunctionValue -1
+        return
+    endif
+	if eval rNode1.IsInInterior && rNode2.IsInInterior
 		if eval rNode1.gpc != rNode2.gpc
 			SetFunctionValue 1
 		endif
-	elseif eval rNode1.gpc
+	elseif eval rNode1.IsInInterior
 		SetFunctionValue 1
-	elseif eval rNode2.gpc
+	elseif eval rNode2.IsInInterior
 		SetFunctionValue 1
 	elseif eval rNode1.gpw != rNode2.gpw
 		SetFunctionValue 1

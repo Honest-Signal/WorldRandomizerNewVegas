@@ -1,14 +1,47 @@
 scn WRProblemSolverSCRIPT
 
+float fX
+float fY
+float fZ
+ref rDoor
+
 begin ScriptEffectStart
-	ref rDoor = WRQuestStart.rRecentDoor
-	if rDoor != 0
-		ref rLink = rDoor.GetTeleportDoor
-		float fX = (rLink.GetDoorTeleportX) - (rDoor.GetPos X)
-		float fY = (rLink.GetDoorTeleportY) - (rDoor.GetPos Y)
-		float fZ = (rLink.GetDoorTeleportZ) - (rDoor.GetPos Z)
-		player.moveto rDoor fX fY fZ
-		WRQuestStart.rRecentDoor = 0
+	array_var aRecentDoors = WRQuestStart.aRecentDoors
+    
+	if eval (Ar_Size aRecentDoors) > 0
+        string_var sMenu = "^Problem Solver^Choose a recent destination (Most recent last):"
+        int iIndex = -1
+        while (iIndex += 1) < (Ar_Size aRecentDoors)
+            ref rCell = aRecentDoors[iIndex].gpc
+            if eval !(rCell)
+                rCell = aRecentDoors[iIndex].gpw
+            endif
+            sMenu = $sMenu + "|" + $rCell
+        loop
+        sMenu = $sMenu + "|Cancel"
+        ref udfMove = (begin function {}
+            player.moveto rDoor fX fY fZ
+            PlaySound OBJStealthBoyActivate
+        end)
+        MessageBoxExAlt (begin function {int iButton}
+            if eval iButton < (Ar_Size aRecentDoors)
+                rDoor = aRecentDoors[iButton]
+                
+                string_var sDoor = rDoor.RefMapGetStr "*aAllDoors"
+                while (sv_length sDoor) < 1
+                    sDoor = rDoor.RefMapGetStr "*aAllDoors"
+                loop
+                
+                array_var aDoor = sv_split sDoor ","
+                fX = #aDoor[0] - (rDoor.GetPos X)
+                fY = #aDoor[1] - (rDoor.GetPos Y)
+                fZ = #aDoor[2] - (rDoor.GetPos Z)
+                Ar_Erase aRecentDoors iButton:((Ar_Size aRecentDoors) - 1)
+                
+                TogglePipBoy
+                CallAfter 0.5 udfMove
+            endif
+        end) $sMenu
 	else
 		MessageEx "There's no door saved in the Problem Solver."
 	endif

@@ -5,34 +5,123 @@ begin function { }
 	array_var aCellsVisited = Ar_MapTo aCells ({array_var aIter} => 0)
     
     int iIndex = Ar_Size aCells
+    ; print "aCells size: " + $iIndex
     while (iIndex -= 1) > -1
         ref rCell = aCells[iIndex]
         array_var aDoorsInCell = Ar_Filter (GetRefsInCell rCell 28 0 1) WRQuestStart.udfOnlyDoorRefs
-        if eval (Ar_Size aDoorsInCell) > 0
+        ; print $iIndex + " Ar_size: " + $(ar_size aDoorsInCell)
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iIndex: " + $iIndex + " rCell: " + GetEditorID (aCells[iIndex]))
+        if eval (Ar_Size aDoorsInCell) > 0 && !(Ar_HasKey WRQuestStart.aIsolatedInteriors (RefToString rCell)) && !(Ar_Any aDoorsInCell ({array_var aIter} => Ar_HasKey WRQuestStart.aIsolatedInteriors ((aIter["Value"]).RefToString)))
             ref rDoor = aDoorsInCell[0]
+            ; print rDoor.RefToString
+            ; if eval rCell == CampGuardianCaves2 ;(Ar_HasKey WRQuestStart.aIsolatedInteriors rDoor.RefToString)
+                ; print "Got to here!"
+                ; ar_Dump aDoorsInCell
+                ; break
+            ; endif
             aCellsVisited[iIndex] = call WRIsConnectedToWorldspaceUDF rDoor
+        elseif eval (Ar_Size aDoorsInCell) > 0
+            Ar_Erase aCells iIndex
+            Ar_Erase aCellsVisited iIndex
+            ; int iCount = 0
+            if eval (Ar_HasKey WRQuestStart.aIsolatedInteriors (RefToString rCell))
+                foreach (array_var aIter) <- aDoorsInCell
+                    Ar_Insert aCells iIndex (*aIter)
+                    Ar_Insert aCellsVisited iIndex (call WRIsConnectedToWorldspaceUDF *aIter)
+                    ; iCount += 1
+                loop
+                ; Ar_Insert aCells (Ar_Erase aCells (iIndex)) <bunch of doors>
+            else
+                array_var aSpecialDoors = Ar_Filter aDoorsInCell ({array_var aIter} => Ar_HasKey WRQuestStart.aIsolatedInteriors ((aIter["Value"]).RefToString))
+                array_var aNormalDoors = Ar_Filter aDoorsInCell ({array_var aIter} => !(Ar_HasKey WRQuestStart.aIsolatedInteriors ((aIter["Value"]).RefToString)))
+                array_var aGroupsAccounted = Ar_Construct "List"
+                foreach (array_var aIter) <- aSpecialDoors
+                    if eval (Ar_Find *aIter aGroupsAccounted) == Ar_BadNumericIndex
+                        Ar_Append aGroupsAccounted (*aIter)
+                        Ar_Insert aCells iIndex ((RefToString rCell) + "-" + $aIter["Value"])
+                        Ar_Insert aCellsVisited iIndex (call WRIsConnectedToWorldspaceUDF *aIter)
+                        ; iCount += 1
+                    endif
+                loop
+                foreach (array_var aIter) <- aGroupsAccounted
+                    Ar_Insert aCells iIndex ((RefToString rCell) + "-" + $aIter["Value"])
+                loop
+                Ar_Insert aCellsVisited iIndex (call WRIsConnectedToWorldspaceUDF aNormalDoors[0])
+            endif
         else
             Ar_Erase aCells iIndex
             Ar_Erase aCellsVisited iIndex
         endif
     loop
+    
+    array_var aGroupsAccounted = Ar_Construct "List"
+    array_var aIsolatedExteriors = GetArrayVar "aIsolatedExteriors" WRQuestStart
+    ; print "aIsolatedExteriors size: " + $(Ar_Size aIsolatedExteriors) + " & " + $(Ar_Size WRQuestStart.aIsolatedExteriors)
+    foreach (array_var aIter) <- aIsolatedExteriors
+        if eval (Ar_Find *aIter aGroupsAccounted) == Ar_BadNumericIndex
+            Ar_Append aGroupsAccounted (*aIter)
+            Ar_Append aCells ("ExteriorGroup-" + $aIter["Value"])
+            Ar_Append aCellsVisited (call WRIsConnectedToWorldspaceUDF (StringToRef (aIter["Key"])))
+        endif
+    loop
 
 	array_var aResult = Ar_Filter aCellsVisited ({array_var aIter} => *aIter == 0)
-	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Unconnected cells: " + $(Ar_Size aResult) + "/" + $(Ar_Size aCells))
+	PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Unconnected cells/sub-cells: " + $(Ar_Size aResult) + "/" + $(Ar_Size aCells))
     iIndex = -1
 	while (iIndex += 1) < (Ar_Size aCells)
         if eval aCellsVisited[iIndex] == 0
-            ref rCell = aCells[iIndex]
-            array_var aDoors = Ar_Filter (GetRefsInCell rCell 28 0 1) WRQuestStart.udfOnlyDoorRefs
-            int iDoors = Ar_Size aDoors
-            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + RefToString rCell + " (" + GetEditorID rCell + ") (Teleport doors: " + $iDoors + ") Why?: ")
+            array_var aDoors
+            int iDoors
+            int iCurrentCellSection
+            ref rCurrentCell
+            if eval (TypeOf aCells[iIndex]) == "String"
+                string_var sGroup = aCells[iIndex]
+                int iGroup
+                if eval (sv_find "ExteriorGroup-" sGroup) == -1
+                    iGroup = #(sGroup[(sv_find "-" sGroup (sv_find ".es" sGroup)):-1])
+                    sv_erase sGroup ((sv_find "-" sGroup (sv_find ".es" sGroup)))
+                    ref rCell = StringToRef $sGroup
+                    ; print "sGroup: " + sGroup
+                    aDoors = Ar_Filter WRQuestStart.aIsolatedInteriors ({array_var aIter} => *aIter == iGroup)
+                    aDoors = Ar_Keys aDoors
+                    iDoors = Ar_Size aDoors
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + aCells[iIndex] + " (" + GetEditorID rCell + ") (Teleport doors: " + $iDoors + ") Why?: ")
+                else
+                    iGroup = #(sGroup[14:-1])
+                    aDoors = Ar_Filter WRQuestStart.aIsolatedExteriors ({array_var aIter} => *aIter == iGroup)
+                    aDoors = Ar_Keys aDoors
+                    iDoors = Ar_Size aDoors
+                    string_var sWorldspace = aDoors[0]
+                    ref rWorldspace = StringToRef $sWorldspace
+                    rWorldspace = rWorldspace.gpw
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + aCells[iIndex] + " (in " + GetEditorID rWorldspace + ") (Teleport doors: " + $iDoors + ") Why?: ")
+                endif
+            elseif eval IsReference (aCells[iIndex])
+                ref rDoor = aCells[iIndex]
+                aDoors = Ar_List rDoor
+                if eval rCurrentCell != rDoor.gpc
+                    iCurrentCellSection = 1
+                    rCurrentCell = rDoor.gpc
+                endif
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + RefToString rCurrentCell + "-" + $iCurrentCellSection + " (" + GetEditorID rCell + ") (Teleport doors: 1) Why?: ")
+                iCurrentCellSection += 1
+            else ;Is an actual cell
+                ref rCell = aCells[iIndex]
+                aDoors = Ar_Filter (GetRefsInCell rCell 28 0 1) WRQuestStart.udfOnlyDoorRefs
+                iDoors = Ar_Size aDoors
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + RefToString rCell + " (" + GetEditorID rCell + ") (Teleport doors: " + $iDoors + ") Why?: ")
+            endif
             foreach (array_var aEntry) <- aDoors
+                if eval (TypeOf *aEntry) == "String"
+                    string_var sEntry = *aEntry
+                    let aEntry["Value"] := StringToRef $sEntry
+                endif
                 ref rDoor = *aEntry
                 if eval rDoor.GetDisabled
                     PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is disabled.")
-                elseif eval rDoor.GetLockLevel == 255
+                elseif eval rDoor.GetLocked && rDoor.GetLockLevel == 255
                     if eval rDoor.GetKey
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is locked by " + $(rDoor.GetOpenKey))
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is locked by " + $(rDoor.GetKey))
                     elseif eval rDoor.GetTeleportDoor.GetKey
                         PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is locked by " + $(rDoor.GetTeleportDoor.GetKey))
                     else
@@ -40,13 +129,13 @@ begin function { }
                     endif
                 elseif eval GetFormFlag rDoor 256
                     PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is inaccessible.")
-                elseif eval ListGetFormIndex WRProblemDoors (rDoor.GetTeleportDoor) != -1
-                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is problematic.")
+                ; elseif eval ListGetFormIndex WRProblemDoors (rDoor.GetTeleportDoor) != -1
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is problematic.")
                 elseif eval rDoor.GetTeleportDoor.GetTeleportDoor != rDoor
                     ref rLink = rDoor.GetTeleportDoor
                     PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + "'s link (" + rLink.RefToString + ") leads to " + rLink.GetTeleportDoor.RefToString + " instead of itself.")
                 else
-                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " is weird.")
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "|     " + rDoor.RefToString + " has something unchecked going on.")
                 endif
             loop
         endif

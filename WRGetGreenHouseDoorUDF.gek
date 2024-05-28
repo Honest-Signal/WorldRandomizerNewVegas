@@ -54,12 +54,16 @@ begin function { rDoor }
     ; Doors 26-29 are covering normally unused doors from the greenhouse, but may be added by a mod.
     elseif eval sDoor == "00160D55"
         rResultDoor = WRGreenHouseDoor26
+        rResultDoor.enable
     elseif eval sDoor == "00160D56"
         rResultDoor = WRGreenHouseDoor27
+        rResultDoor.enable
     elseif eval sDoor == "00160D57"
         rResultDoor = WRGreenHouseDoor28
+        rResultDoor.enable
     elseif eval sDoor == "00160D58"
         rResultDoor = WRGreenHouseDoor29
+        rResultDoor.enable
     else
         rResultDoor = rDoor ;Prevents future issues.
     endif

@@ -3,17 +3,28 @@ scn WRIsConnectedToWorldspaceUDF
 array_var aQueue
 array_var aVisited
 ref rEdge
+ref rNode
 
 begin function { rEdge }
-    int bLogging ;= (rEdge == (GFFM "FalloutNV.esm" "131562"))
-    ref rNode = rEdge.gpc
-    if eval !(rNode)
-        rNode = rEdge.gpw
+    if eval !(rEdge)
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| WARNING: Null door in WRIsConnectedToWorldspaceUDF: " + (GetFormIDString rEdge))
+        SetFunctionValue -1
+        return
+    endif
+    int bLogging ;= (rEdge == (GFFM "FalloutNV.esm" "16A9B2"))
+    if eval (Ar_HasKey WRQuestStart.aIsolatedExteriors rEdge.RefToString) || (Ar_HasKey WRQuestStart.aIsolatedInteriors rEdge.RefToString) || (Ar_HasKey WRQuestStart.aIsolatedInteriors (RefToString (rEdge.gpc)))
+        rNode = rEdge
+    else
+        if eval rEdge.IsInInterior
+            rNode = rEdge.gpc
+        else
+            rNode = rEdge.gpw
+        endif
     endif
 
     SetFunctionValue 1
     if eval bLogging
-        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Verifying connectivity of cell/worldspace " + GetEditorID rNode)
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Verifying connectivity of door/cell/worldspace " + GetEditorID rNode + " (" + GetFormIDString rNode + ")")
     endif
     aVisited = Ar_List rNode
     aQueue = Ar_List rNode
@@ -23,24 +34,23 @@ begin function { rEdge }
 		Ar_Erase aQueue 0
         
         if eval bLogging
-            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Entering cell/worldspace " + GetEditorID rSearch + ". aQueue size: " + $(Ar_Size aQueue))
+            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Entering door/cell/worldspace " + GetEditorID rSearch + " (" + GetFormIDString rSearch + ")" + ". aQueue size: " + $(Ar_Size aQueue))
         endif
         
         array_var aDoors 
         if eval (GetType rSearch) == 57
             aDoors = GetRefsInCell rSearch 28 0 1
-        else
-            string_var sWorld = RefToString rSearch
-            aDoors = WRQuestStart.aWorldspacesDoorCount[sWorld]
-            sv_destruct sWorld
+        elseif eval (GetType rSearch) == 65
+            string_var sWorld = "*" + RefToString rSearch
             
-            if eval (Ar_Size aDoors) > 5
+            if eval (AuxVarSize $sWorld WRQuestStart) > 5
                 aQueue = Ar_Null
                 if eval bLogging
                     PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Found worldspace " + GetEditorID rSearch)
                 endif
                 break
             else
+                aDoors = AuxVarGetAsArr $sWorld WRQuestStart
                 if eval bLogging
                     PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Worldspace " + GetEditorID rSearch + " has 5 or less doors.")
                     foreach array_var aEntry <- aDoors
@@ -50,37 +60,77 @@ begin function { rEdge }
                 endif
                 
             endif
+        else
+            if eval rSearch.IsInInterior
+                if eval (Ar_HasKey WRQuestStart.aIsolatedInteriors rSearch.RefToString)
+                    aDoors = Ar_Filter WRQuestStart.aIsolatedInteriors ({array_var aIter} => *aIter == WRQuestStart.aIsolatedInteriors[rSearch.RefToString])
+                    aDoors = Ar_Keys aDoors
+                    int iIndex = -1
+                    while (iIndex += 1) < (Ar_Size aDoors)
+                        string_var sIndexDoor = aDoors[iIndex]
+                        aDoors[iIndex] = StringToRef $sIndexDoor
+                    loop
+                else
+                    aDoors = Ar_List rSearch
+                endif
+            else
+                aDoors = Ar_Filter WRQuestStart.aIsolatedExteriors ({array_var aIter} => *aIter == WRQuestStart.aIsolatedExteriors[rSearch.RefToString])
+                aDoors = Ar_Keys aDoors
+                int iIndex = -1
+                while (iIndex += 1) < (Ar_Size aDoors)
+                    string_var sIndexDoor = aDoors[iIndex]
+                    aDoors[iIndex] = StringToRef $sIndexDoor
+                loop
+            endif
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rSearch: " + rSearch.RefToString + " aDoors: " + $aDoors)
         endif
+        
         
         foreach array_var entry <- aDoors
             ref rDoor = *entry
-            bLogging = (rDoor == (GFFM "FalloutNV.esm" "131562"))
+            ; bLogging = (rDoor == (GFFM "FalloutNV.esm" "131562"))
             if eval bLogging
-                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Checking door " + rDoor.RefToString + " in " + GetEditorID rSearch)
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Checking door " + rDoor.RefToString + " in " + GetEditorID rSearch + " (" + GetFormIDString rSearch + ")")
             endif
-            if eval rDoor.GetDisabled || rDoor.GetLockLevel == 255 || (GetFormFlag rDoor 256)
+            if eval rDoor.GetDisabled || (rDoor.GetLocked && rDoor.GetLockLevel == 255) || (GetFormFlag rDoor 256) || (IsRefInList WRUnusableDoors rDoor) != -1
+                if eval bLogging
+                    if eval rDoor.GetDisabled
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " is disabled.")
+                    elseif eval (rDoor.GetLocked && rDoor.GetLockLevel == 255)
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " is locked by a key.")
+                    elseif eval (GetFormFlag rDoor 256)
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " is inaccessible.")
+                    elseif eval (IsRefInList WRUnusableDoors rDoor) != -1 
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " is unreachable.")
+                    endif
+                endif
                 continue
             endif
-            if eval rDoor.GetTeleportDoor && ListGetFormIndex WRProblemDoors (rDoor.GetTeleportDoor) == -1 && rDoor.GetTeleportDoor.GetTeleportDoor == rDoor
-                ref rNextCell = rDoor.GetTeleportDoor.gpc
-                if eval !(rNextCell)
-                    rNextCell = rDoor.GetTeleportDoor.gpw
-                    sWorld = RefToString rNextCell
-                    if eval (Ar_Size WRQuestStart.aWorldspacesDoorCount[sWorld]) > 5 && rNextCell != GreenhouseWorld01
+            if eval rDoor.GetTeleportDoor && (rDoor.GetTeleportDoor.GetTeleportDoor == rDoor || (Ar_Find rDoor WRQuestStart.aWhitelist) != Ar_BadNumericIndex || (Ar_Find rDoor.gbf WRQuestStart.aWhitelist) != Ar_BadNumericIndex)
+                ref rLink = rDoor.GetTeleportDoor
+                ref rNext = rLink.gpc
+                if eval (Ar_HasKey WRQuestStart.aIsolatedExteriors rLink.RefToString) || (Ar_HasKey WRQuestStart.aIsolatedInteriors rLink.RefToString) || (Ar_HasKey WRQuestStart.aIsolatedInteriors (RefToString rNext))
+                    rNext = rLink
+                elseif eval !(rLink.IsInInterior)
+                    rNext = rLink.gpw
+                    sWorld = "*" + RefToString rNext
+                    if eval (AuxVarSize $sWorld WRQuestStart) > 5 && rNext != GreenhouseWorld01
                         aQueue = Ar_Null
                         if eval bLogging
-                            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Found worldspace " + GetEditorID rNextCell)
+                            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Found worldspace " + GetEditorID rNext)
                         endif
                         break
                     endif
                 endif
                 if eval bLogging
-                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " leads to " + GetEditorID rNextCell)
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + " leads to " + GetEditorID rNext + " (" + GetFormIDString rNext + ")")
                 endif
-                if eval (Ar_Find rNextCell, aVisited) == Ar_BadNumericIndex
-                    Ar_Append aQueue, rNextCell
-                    Ar_Append aVisited, rNextCell
+                if eval (Ar_Find rNext, aVisited) == Ar_BadNumericIndex
+                    Ar_Append aQueue, rNext
+                    Ar_Append aVisited, rNext
                 endif
+            elseif eval bLogging && rDoor.GetTeleportDoor
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rDoor.RefToString + "'s link (" + rDoor.GetTeleportDoor.RefToString + ") isn't reciprocal.")
             endif
         loop
     loop

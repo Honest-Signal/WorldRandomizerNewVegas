@@ -6,15 +6,19 @@ array_var aDoors
 array_var aDoorsNoLink
 array_var aDoorsToReset
 array_var aDoorsUsed
+array_var aIsolatedExteriors
+array_var aIsolatedInteriors
 array_var aOptions
 array_var aOptionsSelected
 array_var aRand
+array_var aRecentDoors
 array_var aShuffle
+array_var aThreads
 array_var aWatchedVariables
 array_var aWhitelist
-array_var aWorldspacesDoorCount
+; array_var aWorldspacesDoorCount
 float fID
-float fTimer
+float fTimerGame
 int bBreakLoop
 int bObscure
 int iAddOnce
@@ -23,13 +27,16 @@ int iDisconnectivity
 int iOptionSelecting
 int iIndex
 int iLoops
+int iProgress
 int iRandIndex
 int iRandomize
 int iSetShuffle
 int iSize
 int iStartEvents
+int iTest
 int iTimer
 int iVersions
+int iYUPIndex
 ref rDoor
 ref rDoorUsing
 ref rEdge1
@@ -39,7 +46,6 @@ ref rEdge2Link
 ref rNode1
 ref rNode2
 ref rLink
-ref rRecentDoor
 ref udfOnlyDoorRefs
 string_var sMenu
 string_var sShuffleKey
@@ -90,19 +96,33 @@ begin menumode
 			SetINIfloat "Main:bExportRandomizer" 1
 			SetINIfloat "Main:bImportRandomizerOnNextLoad" 0
 			SetINIfloat "Main:bRerandomizeWorld" 0
+            SetINIfloat "Main:iProblemSolverDoors" 3
 			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Created WorldRandomizer.ini." )
 		endif
+        if eval (Ar_Size GetINISectionNames) == 1
+            array_var aIsolated = Ar_Map "FalloutNV.esm:135A5B"::1 "FalloutNV.esm:135AA5"::1
+            SetINISection "IsolatedExteriors" aIsolated
+            aIsolated = Ar_Map "FalloutNV.esm:138A9E"::-1 "FalloutNV.esm:13F320"::1
+            SetINISection "IsolatedInteriors" aIsolated
+            aIsolated = Ar_Null
+        endif
+        if eval (GetINIfloat "Main:iProblemSolverDoors") == 0
+            SetINIfloat "Main:iProblemSolverDoors" 3
+        endif
+        
 
-		iIndex = -1
 		udfOnlyDoorRefs = ({array_var aIter} => (*aIter).GetTeleportDoor)
+        iYupIndex = Call WRGetYUPIndexUDF
         Call WRGetAllDoorsUDF
         ; Call WRConnectivityUDF
         
-        SetEventHandler "OnActivate" WROnActivateDoorsUDF "first"::WRAllDoors "second"::playerref
+        SetEventHandler "OnActivate" WROnActivateDoorsUDF "first"::WRAllDoors ;"second"::playerref
 		SetEventHandler "OnCellEnter" WROnCellEnterUDF
         SetEventHandler "OnCrosshairOn:28" (begin function {rDoor}
             if eval aDoorsToReset && rDoor.GetTeleportDoor
                 Ar_Append aDoorsToReset rDoor
+            elseif eval rDoor == VPitPlayerAccessDoorREF && aOptionsSelected[0]
+                VPitPlayerAccessDoorREF.Unlock
             endif
         end) 
 	endif
@@ -127,13 +147,15 @@ begin gamemode
             fID = rand 0 100
         endif
         
-        iSetShuffle = (AuxVarGetFlt "*fID" 0 WRQuestStart) != fID
-        AuxVarSetFlt "*fID" fID 0 WRQuestStart
+        iSetShuffle = (GetModLocalData "fCurrentLoadedRandom") != fID
+        SetModLocalData "fCurrentLoadedRandom" fID
         sv_destruct sShuffleKey
 
 		if eval (Ar_Size aWatchedVariables) < 1
 			aWatchedVariables = Ar_Construct "Stringmap"
 		endif
+        
+        iYupIndex = Call WRGetYUPIndexUDF
 		
 		; if eval (Ar_Size aAllDoors) != (Ar_Size (Ar_Filter (GLTA 58) WRQuestStart.udfOnlyDoorRefs))
 			; Call WRGetAllDoorsUDF
@@ -147,22 +169,23 @@ begin gamemode
 			loop
 		endif
         
-        if eval (Ar_Size aWorldspacesDoorCount) < 1
-            array_var aWorldspacesDoorCount = ar_Construct "Stringmap"
-            iIndex = -1
-            while (iIndex += 1) < (Ar_Size aKeys)
-                rDoor = aKeys[iIndex]
-                if eval rDoor.gpw
-                    string_var sDoorWorld = RefToString (rDoor.gpw)
-                    if eval Ar_HasKey aWorldspacesDoorCount sDoorWorld
-                        Ar_Append aWorldspacesDoorCount[sDoorWorld] rDoor
-                    else
-                        aWorldspacesDoorCount[sDoorWorld] = Ar_List rDoor
-                    endif
-                    sv_destruct sDoorWorld
-                endif
-            loop
-        endif
+        ; if eval (Ar_Size aWorldspacesDoorCount) < 1
+            ; array_var aWorldspacesDoorCount = ar_Construct "Stringmap"
+            ; iIndex = -1
+            ; while (iIndex += 1) < (Ar_Size aKeys)
+                ; rDoor = aKeys[iIndex]
+                ; if eval rDoor.gpw
+                    ; string_var sDoorWorld = RefToString (rDoor.gpw)
+                    ; if eval Ar_HasKey aWorldspacesDoorCount sDoorWorld
+                        ; Ar_Append aWorldspacesDoorCount[sDoorWorld] rDoor
+                    ; else
+                        ; aWorldspacesDoorCount[sDoorWorld] = Ar_List rDoor
+                    ; endif
+                    ; sv_destruct sDoorWorld
+                ; endif
+            ; loop
+        ; endif
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set up aWorldspacesDoorCount")
 
 		if eval (TypeOf aDoorsUsed) != "Stringmap" || (Ar_Size aDoorsUsed) < 1
 ;			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting up aDoorsUsed, size < 1" )
@@ -242,11 +265,15 @@ begin gamemode
 				sv_destruct sError
 			endif
 		endif
-
-		if eval iAddOnce == 0
-			player.additem WRProblemSolver 1
-			iAddOnce = 1
-		endif
+        
+        if eval iAddOnce == 0 && (GetINIFloat "Main:iProblemSolverDoors") > 0
+            player.additem WRProblemSolver 1
+            iAddOnce = 1
+        endif
+        
+        if eval !aRecentDoors
+            aRecentDoors = Ar_Construct "Array"
+        endif
         
         if eval (Ar_Size aShuffle) < 1
             iRandomize = 1
@@ -257,7 +284,6 @@ begin gamemode
 			Call WRWriteaShuffleToFileUDF
 			SetINIfloat "Main:bExportRandomizer" 0
 		endif
-
 	endif
 
 ;====STARTING RANDOMIZATION
@@ -265,11 +291,13 @@ begin gamemode
         iSetShuffle = 0
         Ar_Erase aShuffle
         Ar_Erase aDoorsToReset
-        Ar_ForEach aDoorsUsed ({array_var aIter} => *aIter = 0)
+        Ar_ForEach aDoorsUsed ({array_var aIter} => aDoorsUsed[aIter["key"]] = 0)
         iOptionSelecting = 0
         iRandomize = 0
+        bObscure = 0
         
     elseif eval iRandomize == 2 ;Getting ready to randomize
+        iRandomize = 0
         PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Resetting world.")
         aShuffle = Ar_Construct "Stringmap"
         Call WRWorldResetUDF
@@ -286,6 +314,7 @@ begin gamemode
                 array_var aAddDoors = AuxVarGetAsArr ("*" + $iModIndex) WRQuestStart ;Ar_Filter (GLTA 58 iModIndex) WRQuestStart.udfOnlyDoorRefs
                 Ar_Cat aDoors aAddDoors
                 Ar_Append aModsUsed iModIndex
+                aAddDoors = Ar_Null
             endif
         loop
         
@@ -311,273 +340,337 @@ begin gamemode
                 Ar_Erase aDoors iIndex
                 ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + rDoor.RefToString + " whitelisted.")
             elseif eval !(((Ar_Find rLink aWhitelist) < 0) && ((Ar_Find rLinkBase aWhitelist) < 0))
-                Ar_Erase aDoors iIndex
                 Ar_Append aDoorsNoLink rDoor
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Link of " + rDoor.RefToString + " (" + rLink.RefToString + ") whitelisted.")
             endif
         loop
         
         iIndex = 0
         array_var aSpareDoors = Ar_List WRGreenHouseDoor23 WRGreenHouseDoor24 WRGreenHouseDoor25
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aDoorsNoLink size: " + $(Ar_Size aDoorsNoLink))
         while (Ar_Size aDoorsNoLink) % 4
             ref rSpareDoor = aSpareDoors[iIndex]
             Ar_Append aDoorsNoLink rSpareDoor
             rSpareDoor.SetRefFlag 256 0
             iIndex += 1
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iIndex inside aDoorsNoLink: " + $iIndex)
         loop
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iIndex after aDoorsNoLink: " + $iIndex)
         while iIndex < 3    ;Unused spare doors are inaccessible.
             ref rSpareDoor = aSpareDoors[iIndex]
+            while (rSpareDoor.GetTeleportDoor != rSpareDoor)
+                rSpareDoor.SetDoorTeleport rSpareDoor
+            loop
             rSpareDoor.SetRefFlag 256 1
             iIndex += 1
         loop
         
+        iIndex = -2
+        while (iIndex += 2) < (Ar_Size aDoorsNoLink)
+            rDoor = aDoorsNoLink[iIndex]
+            rLink = aDoorsNoLink[iIndex+1]
+            while (rDoor.GetTeleportDoor != rLink) || (rLink.GetTeleportDoor != rDoor)
+                rDoor.SetDoorTeleport rLink
+                rLink.SetDoorTeleport rDoor
+            loop
+            ; print rDoor.RefToString + " -> " + rDoor.GetTeleportDoor.RefToString + " & " + rLink.RefToString + " -> " + rLink.GetTeleportDoor.RefToString
+        loop
+        Ar_Erase aDoorsNoLink
+        
         aModsUsed = Ar_Null
         iIndex = 0
         iCount = 0
-        iSize = (Ar_Size aDoors) + (Ar_Size aDoorsNoLink)
+        iProgress = 1
+        iSize = Ar_Size aDoors
         bBreakLoop = 0
         PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Starting randomization...")
         iRandomize = 3
-        aRand = Ar_Range 0 (Ar_Size aDoors)-1
+        aThreads = Ar_Construct "array"
+        fTimerGame = 0
         
     elseif eval iRandomize == 3 ;The main randomization
-        if eval iIndex < (Ar_Size aDoors)
-            Ar_Erase aRand iIndex
-            iRandomize = 0 ;This keeps this from tripping over itself. Hopefully
-            rEdge1 = aDoors[iIndex]
-            if testexpr rEdge1Link = aShuffle[rEdge1.RefToString]
-            else
-                array_var aDoor = sv_split (rEdge1.RefMapGetStr "*aAllDoors") ","
-                string_var sLink = aDoor[4]
-                rEdge1Link = StringToRef $sLink
-            endif
-            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iIndex: " + $iIndex + " Door: " + rEdge1.RefToString + " aRand size: " + $(Ar_Size aRand))
-            
-            while !(bBreakLoop) && (Ar_Size aRand) > 0
-                iRandIndex = GetRandomInRange 0 (Ar_Size aRand)
-                rEdge2 = aDoors[aRand[iRandIndex]]
-                if testexpr rEdge2Link = aShuffle[rEdge2.RefToString]
-                else
-                    array_var aDoor = sv_split (rEdge2.RefMapGetStr "*aAllDoors") ","
-                    string_var sLink = aDoor[4]
-                    rEdge2Link = StringToRef $sLink
-                endif
-                bBreakLoop = call WRAreParentsDifferentUDF rEdge2 rEdge2Link
-                Ar_Erase aRand iRandIndex
-            loop
-            
-            
-            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door2: " + rEdge2.RefToString + " Link2: " + rEdge2Link.RefToString)
-            bBreakLoop = call WRAreParentsDifferentUDF rEdge1 rEdge2Link
-            if eval bBreakLoop
-                bBreakLoop = call WRAreParentsDifferentUDF rEdge2 rEdge1Link
-            endif
-            
-            if eval bBreakLoop
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + " -> rEdge2Link: " + rEdge2Link.RefToString)
-                rEdge1.call WRSetDoorTeleportUDF rEdge2Link
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2Link: " + rEdge2Link.RefToString + " -> rEdge1: " + rEdge1.RefToString)
-                rEdge2Link.call WRSetDoorTeleportUDF rEdge1
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + " -> rEdge1Link: " + rEdge1Link.RefToString)
-                rEdge2.call WRSetDoorTeleportUDF rEdge1Link
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1Link: " + rEdge1Link.RefToString + " -> rEdge2: " + rEdge2.RefToString)
-                rEdge1Link.call WRSetDoorTeleportUDF rEdge2
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| edge1 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge1) + " edge2 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge2))
+        fTimerGame += GetSecondsPassed
+        if eval iIndex < (Ar_Size aDoors) || (Ar_Size aThreads) > 0
+            int iThread = -1
+            ; iRandomize = 0
+            while (iThread += 1) < 4
+                string_var sThread = "*Thread" + $iThread
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread: " + $iThread + " Thread sizes: " + $(AuxVarSize "*Thread1" WRQuestStart) + " " + $(AuxVarSize "*Thread2" WRQuestStart) + " " + $(AuxVarSize "*Thread3" WRQuestStart) + " " + $(AuxVarSize "*Thread4" WRQuestStart))
                 
-                if eval (call WRIsConnectedToWorldspaceUDF rEdge1) && (call WRIsConnectedToWorldspaceUDF rEdge1Link) && (call WRIsConnectedToWorldspaceUDF rEdge2) && (call WRIsConnectedToWorldspaceUDF rEdge2Link)
-                    aShuffle[rEdge1.RefToString] = rEdge2Link
-                    aShuffle[rEdge2Link.RefToString] = rEdge1
-                    aShuffle[rEdge2.RefToString] = rEdge1Link
-                    aShuffle[rEdge1Link.RefToString] = rEdge2
-                    if eval (Ar_Find rEdge1Link aDoors) == Ar_BadNumericIndex
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge1Link.RefToString + " is possibly whitelisted.")
-                    endif
-                    if eval (Ar_Find rEdge2Link aDoors) == Ar_BadNumericIndex
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge2Link.RefToString + " is possibly whitelisted.")
-                    endif
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge1.RefToString + " <-> " + rEdge2Link.RefToString)
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge2.RefToString + " <-> " + rEdge1Link.RefToString)
-                    
-                    if eval iLoops > 100
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rEdge1.RefToString + " took " + $iLoops + " loops.")
-                    endif
-					iIndex += 1
-                    iCount += 1
-                    iLoops = 0
-                    aRand = Ar_Range 0 (Ar_Size aDoors)-1
-
-					int iFourth = iSize / 4
-                    if eval iCount % iFourth == 0 && (iCount / iFourth) != 4
-                        MessageExAlt 3 "#3|(World Randomizer) Randomization is %g%% done." (iCount / iFourth * 25)
-                        Print "(World Randomizer) Randomization is " + $(iCount / iFourth * 25) + "% done."
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Randomization is " + $(iCount / iFourth * 25) + "% done.")
-                    endif
-                    
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Connected " + rEdge1.RefToString + " to " + rEdge2Link.RefToString + " and vice-versa.")
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Connected " + rEdge2.RefToString + " to " + rEdge1Link.RefToString + " and vice-versa.")
-                else
-                    rEdge1.call WRSetDoorTeleportUDF rEdge1Link
-                    rEdge1Link.call WRSetDoorTeleportUDF rEdge1
-                    rEdge2.call WRSetDoorTeleportUDF rEdge2Link
-                    rEdge2Link.call WRSetDoorTeleportUDF rEdge2
-                    
-                    iLoops += 1
-                    if eval (Ar_Size aRand) < 1 || iLoops > 500
-                        iIndex += 1
-                        iCount += 1
-                        iLoops = 0
+                if eval (AuxVarType (sThread+"busy") 0 WRQuestStart)
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " is busy.")
+                    continue ;Great, the thread is currently working so we can move to the next one
+                elseif eval (AuxVarSize $sThread WRQuestStart) > 0 || ((AuxVarSize $sThread WRQuestStart) == 0 && iIndex < (Ar_Size aDoors) && (Ar_Find aDoors[iIndex] aThreads) == Ar_BadNumericIndex)
+                    if eval (AuxVarSize $sThread WRQuestStart) > 0 ;This thread just needs to keep working on its existing index
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " called again.")
+                    else
+                        AuxVarSetFlt $sThread iIndex 0 WRQuestStart ;Initialize the thread, so to speak
+                        Ar_Append aThreads aDoors[iIndex]
                         aRand = Ar_Range 0 (Ar_Size aDoors)-1
-                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
+                        AuxVarSetFromArr (sThread+"rand") aRand WRQuestStart
+                        iIndex += 1
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " initialized.")
                     endif
-                endif
-            endif
-            bBreakLoop = 0
-            rEdge1 = rEdge2 = rEdge1Link = rEdge2Link = 0
-            iRandomize = 3
-            
-        else
-            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Now dealing with " + $(Ar_Size aDoorsNoLink) + " doors with whitelisted links.")
-            aRand = Ar_Range 0 (Ar_Size aDoorsNoLink)-1
-            iIndex = (Ar_Size aDoorsNoLink)-1
-            iLoops = 0
-            iRandomize = 4
-        endif
-        
-    elseif iRandomize == 4  ;Handling leftover doors
-        if eval iIndex > -1
-            iRandomize = 0 ;This keeps this from tripping over itself. Hopefully
-            array_var aRemove = Ar_List iIndex
-            Ar_Erase aRand iIndex
-            rEdge1 = aDoorsNoLink[iIndex]
-            
-            if eval (Ar_Size aRand) > 0
-                iRandIndex = GetRandomInRange 0 (Ar_Size aRand)
-                rEdge1Link = aDoorsNoLink[aRand[iRandIndex]]
-                bBreakLoop = 1
-            endif
-            Ar_Append aRemove iRandIndex
-            Ar_Erase aRand iRandIndex
-            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + ", rEdge1Link: " + rEdge1Link.RefToString)
-            
-            if eval bBreakLoop
-                bBreakLoop = 0
-                array_var aRandTemp = Ar_Copy aRand
-                while !(bBreakLoop) && (Ar_Size aRandTemp) > 0
-                    iRandIndex = GetRandomInRange 0 (Ar_Size aRandTemp)
-                    rEdge2 = aDoorsNoLink[aRandTemp[iRandIndex]]
-                    bBreakLoop = call WRAreParentsDifferentUDF rEdge2 rEdge1Link
-                    Ar_Erase aRandTemp iRandIndex
-                loop
-            endif
-            Ar_Append aRemove iRandIndex
-            Ar_Erase aRand iRandIndex
-            
-            if eval bBreakLoop
-                bBreakLoop = 0
-                array_var aRandTemp = Ar_Copy aRand
-                while !(bBreakLoop) && (Ar_Size aRandTemp) > 0
-                    iRandIndex = GetRandomInRange 0 (Ar_Size aRandTemp)
-                    rEdge2Link = aDoorsNoLink[aRandTemp[iRandIndex]]
-                    bBreakLoop = call WRAreParentsDifferentUDF rEdge1 rEdge2Link
-                    Ar_Erase aRandTemp iRandIndex
-                loop
-            endif
-            Ar_Append aRemove iRandIndex
-            Ar_Erase aRand iRandIndex
-            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + ", rEdge2Link: " + rEdge2Link.RefToString)
-            
-            if bBreakLoop
-                rEdge1.call WRSetDoorTeleportUDF rEdge2Link
-                rEdge2Link.call WRSetDoorTeleportUDF rEdge1
-                rEdge2.call WRSetDoorTeleportUDF rEdge1Link
-                rEdge1Link.call WRSetDoorTeleportUDF rEdge2
-            
-                if eval (call WRIsConnectedToWorldspaceUDF rEdge1) && (call WRIsConnectedToWorldspaceUDF rEdge1Link) && (call WRIsConnectedToWorldspaceUDF rEdge2) && (call WRIsConnectedToWorldspaceUDF rEdge2Link)
-                    aShuffle[rEdge1.RefToString] = rEdge2Link
-                    aShuffle[rEdge2Link.RefToString] = rEdge1
-                    aShuffle[rEdge2.RefToString] = rEdge1Link
-                    aShuffle[rEdge1Link.RefToString] = rEdge2
-                    foreach (array_var aEntry) <- aRemove
-                        Ar_Erase aDoorsNoLink aEntry["value"]
-                    loop
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge1.RefToString + " <-> " + rEdge2Link.RefToString)
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge2.RefToString + " <-> " + rEdge1Link.RefToString)
-                    iIndex = (Ar_Size aDoorsNoLink)-1
-                    iCount += 1
-                    iLoops = -1
-                    aRand = Ar_Range 0 (Ar_Size aDoorsNoLink)-1
                     
-                    int iFourth = iSize / 4
-                    if eval iCount % iFourth == 0 && (iCount / iFourth) != 4
-                        MessageExAlt 3 "#3|(World Randomizer) Randomization is %g%% done." (iCount / iFourth * 25)
-                        Print "(World Randomizer) Randomization is " + $(iCount / iFourth * 25) + "% done."
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Randomization is " + $(iCount / iFourth * 25) + "% done.")
+                    AuxVarSetFlt (sThread+"busy") 1 0 WRQuestStart
+                    int bDone = 0
+                    int iThreadIndex = AuxVarGetFlt $sThread 0 WRQuestStart
+                    rEdge1 = aDoors[iThreadIndex]
+                    iLoops = rEdge1.RefMapGetFlt "*iLoops"
+                    aRand = AuxVarGetAsArr (sThread+"rand") WRQuestStart
+                    
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") proc. rEdge1: " + rEdge1.RefToString + " @ index " + $iThreadIndex)
+    
+                    Ar_Erase aRand iThreadIndex
+                    if eval (AuxVarType $sThread 1 WRQuestStart) != 2 ;This would mean we already have rEdge1Link ready.
+                        if testexpr rEdge1Link = aShuffle[rEdge1.RefToString]
+                        else
+                            array_var aDoor = sv_split (rEdge1.RefMapGetStr "*aAllDoors") ","
+                            string_var sLink = aDoor[4]
+                            rEdge1Link = StringToRef $sLink
+                            if eval (Ar_Find rEdge1Link aDoors) == Ar_BadNumericIndex
+                                rEdge1Link = rEdge1.GetTeleportDoor
+                            endif
+                        endif
+                        if eval (Ar_Find rEdge1Link aThreads) != Ar_BadNumericIndex
+                            AuxVarErase (sThread+"busy") -1 WRQuestStart
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") waiting. rEdge1: " + rEdge1.RefToString + " @ index " + $iThreadIndex)
+                            continue ;rEdge1Link is 'busy' right now, but we need it so we should just wait.
+                        else
+                            Ar_Append aThreads rEdge1Link
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " set auxvar 1?: " + $(
+                            AuxVarSetRef $sThread rEdge1Link 1 WRQuestStart
+                        endif
+                    else
+                        rEdge1Link = AuxVarGetRef $sThread 1 WRQuestStart
                     endif
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThreadIndex: " + $iThreadIndex + " Door: " + rEdge1.RefToString + " aRand size: " + $(Ar_Size aRand))
+                    
+                    while !(bBreakLoop) && (Ar_Size aRand) > 0
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") choosing rEdge2.")
+                        int iRandIndex = GetRandomInRange 0 (Ar_Size aRand)
+                        rEdge2 = aDoors[aRand[iRandIndex]]
+                        if eval (Ar_Find rEdge2 aThreads) != Ar_BadNumericIndex
+                            Ar_Erase aRand iRandIndex
+                            continue
+                        else
+                            Ar_Append aThreads rEdge2
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " set auxvar 2?: " + $(
+                            AuxVarSetRef $sThread rEdge2 2 WRQuestStart
+                        endif
+                        if testexpr rEdge2Link = aShuffle[rEdge2.RefToString]
+                        else
+                            array_var aDoor = sv_split (rEdge2.RefMapGetStr "*aAllDoors") ","
+                            string_var sLink = aDoor[4]
+                            rEdge2Link = StringToRef $sLink
+                            if eval (Ar_Find rEdge2Link aDoors) == Ar_BadNumericIndex
+                                rEdge2Link = rEdge2.GetTeleportDoor
+                            endif
+                        endif
+                        if eval (Ar_Find rEdge2Link aThreads) != Ar_BadNumericIndex
+                            Ar_Erase aRand iRandIndex
+                            Ar_Erase aThreads (Ar_Find rEdge2 aThreads)
+                            AuxVarErase $sThread 2 WRQuestStart
+                            continue
+                        else
+                            Ar_Append aThreads rEdge2Link
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " set auxvar 3?: " + $(
+                            AuxVarSetRef $sThread rEdge2Link 3 WRQuestStart
+                        endif
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") About to test " + rEdge2.RefToString + " and " + rEdge2Link.RefToString)
+                        while ((bBreakLoop = rEdge2.call WRAreParentsDifferentUDF rEdge2Link) == -1)
+                            if eval !(rEdge2Link)
+                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " rEdge2Link doesn't exist for some reason??")
+                                break
+                            elseif eval !(rEdge2)
+                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " rEdge2 doesn't exist for some reason??")
+                                break
+                            else
+                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " Something ELSE is wrong with the first AreParentsDifferent so we're gonna wait a bit.")
+                                break
+                            endif
+                        loop
+                        if bBreakLoop == 0
+                            Ar_Erase aRand iRandIndex
+                            Ar_Erase aThreads (Ar_Find rEdge2 aThreads)
+                            Ar_Erase aThreads (Ar_Find rEdge2Link aThreads)
+                            AuxVarErase $sThread 3 WRQuestStart
+                            AuxVarErase $sThread 2 WRQuestStart
+                        endif
+                    loop
+                    
+                    
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door2: " + rEdge2.RefToString + " Link2: " + rEdge2Link.RefToString)
+                    while ((bBreakLoop = rEdge1.call WRAreParentsDifferentUDF rEdge2Link) == -1) 
+                    loop
+                    if eval bBreakLoop
+                        while((bBreakLoop = rEdge2.call WRAreParentsDifferentUDF rEdge1Link) == -1) 
+                        loop
+                    endif
+                    
+                    if eval bBreakLoop
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + " -> rEdge2Link: " + rEdge2Link.RefToString)
+                        while !(rEdge1.call WRSetDoorTeleportUDF rEdge2Link) 
+                        loop
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2Link: " + rEdge2Link.RefToString + " -> rEdge1: " + rEdge1.RefToString)
+                        while !(rEdge2Link.call WRSetDoorTeleportUDF rEdge1) 
+                        loop
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + " -> rEdge1Link: " + rEdge1Link.RefToString)
+                        while !(rEdge2.call WRSetDoorTeleportUDF rEdge1Link) 
+                        loop
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1Link: " + rEdge1Link.RefToString + " -> rEdge2: " + rEdge2.RefToString)
+                        while !(rEdge1Link.call WRSetDoorTeleportUDF rEdge2) 
+                        loop
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| edge1 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge1) + " edge2 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge2))
+                        
+                        int iConnected1
+                        int iConnected1Link
+                        int iConnected2
+                        int iConnected2Link
+                        
+                        while ((iConnected1 = call WRIsConnectedToWorldspaceUDF rEdge1) == -1)
+                        loop
+                        while ((iConnected1Link = call WRIsConnectedToWorldspaceUDF rEdge1Link) == -1)
+                        loop
+                        while ((iConnected2 = call WRIsConnectedToWorldspaceUDF rEdge2) == -1)
+                        loop
+                        while ((iConnected2Link = call WRIsConnectedToWorldspaceUDF rEdge2Link) == -1)
+                        loop
+                        
+                        if eval (iConnected1 + iConnected1Link + iConnected2 + iConnected2Link) == 4
+                            ;Hurray, these doors probably work!
+                            aShuffle[rEdge1.RefToString] = rEdge2Link
+                            aShuffle[rEdge2Link.RefToString] = rEdge1
+                            aShuffle[rEdge2.RefToString] = rEdge1Link
+                            aShuffle[rEdge1Link.RefToString] = rEdge2
+                            if eval (Ar_Find rEdge1Link aDoors) == Ar_BadNumericIndex
+                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge1Link.RefToString + ", now linking to " + rEdge2.RefToString + ", formerly to " + rEdge1.RefToString + ", is possibly whitelisted.")
+                            endif
+                            if eval (Ar_Find rEdge2Link aDoors) == Ar_BadNumericIndex
+                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge2Link.RefToString + ", now linking to " + rEdge1.RefToString + ", formerly to " + rEdge2.RefToString + ", is possibly whitelisted.")
+                            endif
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge1.RefToString + " <-> " + rEdge2Link.RefToString)
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge2.RefToString + " <-> " + rEdge1Link.RefToString)
+                            
+                            if eval iLoops > 100
+                                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rEdge1.RefToString + " took " + $iLoops + " loops.")
+                            endif
+                            bDone = 1
+                        else ;Resetting the doors.
+                            while ((rEdge1.call WRSetDoorTeleportUDF rEdge1Link) == -1)
+                            loop
+                            while ((rEdge1Link.call WRSetDoorTeleportUDF rEdge1) == -1)
+                            loop
+                            while ((rEdge2.call WRSetDoorTeleportUDF rEdge2Link) == -1)
+                            loop
+                            while ((rEdge2Link.call WRSetDoorTeleportUDF rEdge2) == -1)
+                            loop
+                            
+                            iLoops += 1
+                            if eval (Ar_Size aRand) < 1 || iLoops > 500 ;Welp, we're done here.
+                                bDone = 1
+                                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
+                            endif
+                        endif
+                    endif
+                    
+                    if bDone
+                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " done.")
+                        iCount += 1
+                        rEdge1.RefMapErase "*iLoops"
+                        Ar_Erase aThreads (Ar_Find rEdge1 aThreads)
+                        Ar_Erase aThreads (Ar_Find rEdge1Link aThreads)
+                        AuxVarErase $sThread -1 WRQuestStart
+                        AuxVarErase (sThread+"rand") -1 WRQuestStart
+                    else
+                        rEdge1.RefMapSetFlt "*iLoops" iLoops
+                        AuxVarErase $sThread 3 WRQuestStart
+                        AuxVarErase $sThread 2 WRQuestStart
+                        AuxVarSetFromArr (sThread+"rand") aRand WRQuestStart
+                    endif
+                    Ar_Erase aThreads (Ar_Find rEdge2 aThreads)
+                    Ar_Erase aThreads (Ar_Find rEdge2Link aThreads)
+                    AuxVarErase (sThread+"busy") -1 WRQuestStart
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") end. rEdge1: " + rEdge1.RefToString + " @ index " + $iThreadIndex)
+                    rEdge1 = rEdge2 = rEdge1Link = rEdge2Link = 0
+                    bBreakLoop = 0
+                                    
+                                    
                 else
-                    rEdge1.call WRSetDoorTeleportUDF rEdge1Link
-                    rEdge1Link.call WRSetDoorTeleportUDF rEdge1
-                    rEdge2.call WRSetDoorTeleportUDF rEdge2Link
-                    rEdge2Link.call WRSetDoorTeleportUDF rEdge2
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " waiting for iIndex or unneeded (iIndex: " + $iIndex + ")")
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aThreads: " + $aThreads)
+                    continue ; Wait for iIndex to be freed OR we don't need it anymore
                 endif
-            elseif eval (Ar_Size aRand) < 1 || iLoops > 100
-                iIndex -= 1
-                iCount += 1
-                iLoops = -1
-                aRand = Ar_Range 0 (Ar_Size aDoorsNoLink)-1
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
+            loop
+           
+        
+            float fFourth = iSize / 4.0
+            if eval iProgress != 4 && iCount >= (fFourth * iProgress)
+                MessageExAlt 3 "#3|(World Randomizer) Randomization is %g%% done." (iProgress * 25)
+                Print "(World Randomizer) Randomization is " + $(iProgress * 25) + "% done."
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Randomization is " + $(iProgress * 25) + "% done.")
+                iProgress += 1
             endif
-            bBreakLoop = 0
-            rEdge1 = rEdge2 = rEdge1Link = rEdge2Link = 0
-            iLoops += 1
-            iRandomize = 4
-            
+            iRandomize = 3
         else
-            aDoors = aDoorsNoLink = Ar_Null
+            aDoors = aDoorsNoLink = aThreads = aRand = Ar_Null
             iRandomize = 0
-            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Finished randomizing doors." )
+            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Finished randomizing doors. (Took " + $fTimerGame + " seconds.)")
             MessageExAlt 3 "#4|(World Randomizer) Randomization is done."
-            Print "(World Randomizer) Randomization is done."
+            Print "(World Randomizer) Randomization is done. (Took " + $fTimerGame + " seconds.)"
+            PlaySound UIHackingPassGood
+            fTimerGame = 0
             fID = rand 0 100
-            AuxVarSetFlt "*fID" fID 0 WRQuestStart
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| New fID is: " + $fID)
+            SetModLocalData "fCurrentLoadedRandom" fID
             call WROnCellEnterUDF (player.gpc)
+            
+            ; if iTest < 10
+                ; iTest += 1
+                ; iRandomize = 2
+            ; else
+                ; iTest = 0
+            ; endif
         endif
     endif
 
 ;====SETTING aSHUFFLE
-    if iSetShuffle
-        if eval (Ar_Size aShuffle) > 0
-            if eval !(sShuffleKey) || sShuffleKey == Ar_BadStringIndex
-                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Different aShuffle detected, setting doors..." )
-                Call WRWorldResetUDF
-                iIndex = 0
-                sShuffleKey = Ar_First aShuffle
-            else
-                rDoor = StringToRef $sShuffleKey
+    if eval iSetShuffle && (Ar_Size aShuffle) > 0
+        if eval !(sShuffleKey) || sShuffleKey == Ar_BadStringIndex
+            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Different aShuffle detected, setting doors..." )
+            Call WRWorldResetUDF
+            iIndex = 0
+            sShuffleKey = Ar_First aShuffle
+        else
+            rDoor = StringToRef $sShuffleKey
+            if eval IsFormValid rDoor && rDoor.RefMapGetType "*aAllDoors" && Ar_HasKey aShuffle sShuffleKey
                 ref rValue = aShuffle[sShuffleKey]
-                if eval rDoor.RefMapGetType "*aAllDoors"
-                    if eval rValue && rValue.RefMapGetType "*aAllDoors"
-                        rDoor.call WRSetDoorTeleportUDF rValue
-                        iIndex += 1
-                    endif
+                if eval IsFormValid rValue && rValue.RefMapGetType "*aAllDoors"
+                    rDoor.call WRSetDoorTeleportUDF rValue
+                    iIndex += 1
                 else
-                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting door " + $sShuffleKey + " failed, mod not loaded?" )
-                endif
-                
-                sShuffleKey = Ar_Next aShuffle sShuffleKey
-                
-                if eval sShuffleKey == Ar_BadStringIndex
-                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + $iIndex + " doors." )
-                    MessageExAlt 3 "#4|(World Randomizer) Done setting doors."
-                    Print "(World Randomizer) Done setting doors."
-                    iOptionSelecting = 99
-                    iSetShuffle = 0
-                    call WROnCellEnterUDF (player.gpc)
-                else
-                    int iFourth = (Ar_Size aShuffle) / 4
-                    if eval iIndex % iFourth == 0 && (iIndex / iFourth) != 4
-                        MessageExAlt 3 "#3|(World Randomizer) Setting doors is %g%% done." (iIndex / iFourth * 25)
-                        Print "(World Randomizer) Setting doors is " + $(iIndex / iFourth * 25) + "% done."
-                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting doors is " + $(iIndex / iFourth * 25) + "% done.")
-                    endif
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting the link to " + $sShuffleKey + " failed, mod not loaded?" )
+                endif 
+            else
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting door " + $sShuffleKey + " failed, mod not loaded?" )
+            endif
+            
+            sShuffleKey = Ar_Next aShuffle sShuffleKey
+            
+            if eval sShuffleKey == Ar_BadStringIndex
+                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + $iIndex + " doors." )
+                MessageExAlt 3 "#4|(World Randomizer) Done setting doors."
+                Print "(World Randomizer) Done setting doors."
+                PlaySound UIHackingPassGood
+                iOptionSelecting = 99
+                iSetShuffle = 0
+                call WROnCellEnterUDF (player.gpc)
+            else
+                int iFourth = (Ar_Size aShuffle) / 4
+                if eval iIndex % iFourth == 0 && (iIndex / iFourth) != 4
+                    MessageExAlt 3 "#3|(World Randomizer) Setting doors is %g%% done." (iIndex / iFourth * 25)
+                    Print "(World Randomizer) Setting doors is " + $(iIndex / iFourth * 25) + "% done."
+                    PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Setting doors is " + $(iIndex / iFourth * 25) + "% done.")
                 endif
             endif
         endif
@@ -587,10 +680,12 @@ begin gamemode
 	if eval iOptionSelecting < 2
 		if eval iOptionSelecting == 0
             ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| In iOptionSelecting = 0")
+            aOptions = AuxVarGetAsArr "*aOptions" WRQuestStart
             aOptionsSelected = Ar_Construct "array"
 			Ar_Resize aOptionsSelected (Ar_size aOptions) 0
 			iOptionSelecting = 1
 		endif
+        sMenu = AuxVarGetStr "*sMenu" 0 WRQuestStart
 		MessageBoxExAlt WRPluginSelectionUDF $sMenu
 	elseif eval iOptionSelecting >= 2 && iOptionSelecting < 4
 		if iOptionSelecting == 2
@@ -604,6 +699,7 @@ begin gamemode
 			iOptionSelecting = 4
 		endif
 	elseif eval iOptionSelecting == 4
+        MessageBoxEx "Note: Randomization can take anywhere from less than a minute to about 4 minutes, depending on mods. It is advised you don't travel through doors during it (they may rerandomize behind you). Also, don't open any menus or processing will pause."
 		iOptionSelecting = 99
         iRandomize = 2
 	endif
@@ -612,7 +708,11 @@ begin gamemode
 	if eval (Ar_Size aDoorsToReset) > 0
 		int iDoorResetIndex = (Ar_Size aDoorsToReset) - 1
 		rDoor = aDoorsToReset[iDoorResetIndex]
-		rLink = rDoor.GetTeleportDoor
+        if eval (Ar_HasKey aShuffle rDoor.RefToString)
+            rLink = aShuffle[rDoor.RefToString]
+        else
+            rLink = rDoor.GetTeleportDoor
+        endif
 		rDoor.call WRSetDoorTeleportUDF rLink
 		Ar_Erase aDoorsToReset iDoorResetIndex
 	endif

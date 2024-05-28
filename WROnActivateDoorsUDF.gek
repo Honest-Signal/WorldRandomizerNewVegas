@@ -7,14 +7,47 @@ begin function {rDoor, rActor}
 	if IsRefInList WRAllDoorsCasino rDoor > -1
 		EnablePlayerControls
 	endif
+    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Actor " + GetEditorID rActor + " just activated " + rDoor.RefToString)
+    
+    if eval rActor != playerref
+        if eval rDoor.GetDisabled || (rDoor.GetLocked && rDoor.GetLockLevel == 255) || (GetFormFlag rDoor 256)
+            return
+        endif
+        string_var sDoor = rDoor.RefToString
+        if eval (rActor.AuxVarGetStr "*LastDoor") == $sDoor
+            rActor.AuxVarSetFlt "*LastDoorCount" ((rActor.AuxVarGetFlt "*LastDoorCount")+1)
+            if eval (rActor.AuxVarGetFlt "*LastDoorCount") > 6
+                ; ref rCell = rDoor.GetTeleportCell
+                ; if eval !(rCell)
+                    ; rCell = rDoor.GetTeleportDoor.GPW
+                ; endif
+                ref rLinkMove = rDoor.GetTeleportDoor
+                float fX = (rDoor.GetDoorTeleportX) - (rLinkMove.GetPos X)
+                float fY = (rDoor.GetDoorTeleportY) - (rLinkMove.GetPos Y)
+                float fZ = (rDoor.GetDoorTeleportZ) - (rLinkMove.GetPos Z)
+                rActor.MoveToMarkerWithFade rLinkMove fX fY fZ
+                rActor.AuxVarSetFlt "*LastDoorCount" 1
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Moved actor " + GetEditorID rActor + " (" + rActor.RefToString + ") to " + RefToString rCell)
+            endif
+        else
+            rActor.AuxVarSetStr "*LastDoor" $sDoor
+            rActor.AuxVarSetFlt "*LastDoorCount" 1
+        endif
+        return
+    endif
 
 	;This basically verifies that we actually went *through* the activated door.
 	ref rDoorUsing = GetRefVariable "rDoorUsing" WRQuestStart
 	;Print "rDoor: " + GetFormIdString rDoor + " rDoorUsing: " + GetFormIdString rDoorUsing
 	if rDoor == rDoorUsing
-		SetRefVariable "rRecentDoor" rDoor WRQuestStart ;Updates the problem solver to have the door we just went through
+		;Updates the problem solver to have the door we just went through
+        Ar_Append WRQuestStart.aRecentDoors rDoor
+        if eval (Ar_Size WRQuestStart.aRecentDoors) > (GetINIFloat "Main:iProblemSolverDoors")
+            Ar_Erase WRQuestStart.aRecentDoors 0
+        endif
 		ref rLink = rDoor.GetTeleportDoor
-		rLink.unlock ;In case you have a case like a lockpick door going to 
+		rLink.unlock ;In case you have a case like a lockpick door going to
+        SetFormFlag rLink 256 0 ;Similarly, we need to un-set inaccessible doors to avoid one-ways
 		PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Player activated door " + rDoor.RefToString + " to " + rLink.RefToString + ".")
         
         if eval rDoor.GPC == Gomorrah01 || rDoor.GPC == ULCasino || rDoor.GPC == TOPSCasino
@@ -32,10 +65,23 @@ begin function {rDoor, rActor}
         endif
 
 		;Moves RS Charlie destruction activator to wherever you exit
-		if (VStoryState >= 30 || GetHasNote VFreeformNovacRangerStationNote)
-			ref rActivator = GFFM "FalloutNV.esm" "1271DA"
-			rActivator.moveto rLink
-		endif
+		; if eval (VStoryState >= 30 || GetHasNote VFreeformNovacRangerStationNote)
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Inside fourth if.")
+			; ref rActivator = GFFM "FalloutNV.esm" "1271DA"
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| After setting rActivator.")
+            ; if eval IsFormValid rActivator
+                ; rActivator.moveto rLink
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| After moving rActivator to rLink.")
+            ; endif
+            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| After IsFormValid.")
+		; endif
+        
+        if rDoor == (GFFM "FalloutNV.esm" "172534")
+            ref rActivator = GFFM "FalloutNV.esm" "FB4E0"
+            rActivator.moveto rLink
+            CallAfter 5 ({} => rActivator.MoveToEditorPosition)
+        endif
+        ; Print "After new if"
 
 		;Opens the weather station hatch
 		if eval rLink == (GFFM "FalloutNV.esm" "156FB6") && SecuritonVaultHatchRef.GetOpenState > 2
@@ -43,15 +89,30 @@ begin function {rDoor, rActor}
 		endif
         
         ;Unpacifies people leaving the Think Tank
-		if eval rDoor.GPC == (GFFM "OldWorldBlues.esm" "0030B5")
+		if eval IsModLoaded "OldWorldBlues.esm" && rDoor.GPC == (GFFM "OldWorldBlues.esm" "0030B5")
             CallAfter 0 ({} => EnablePlayerControls)
         endif
 
-		if rLink == VFSSilverRushExtDoorREF
+        ;Unfrisks people who were frisked
+		if eval rLink == VFSSilverRushExtDoorREF
 			if VFSSimonREF.SimonSearched == 1
 				VFSSilverRushFriskingTriggerREF.Activate VFSSimonREF 1
-			endif
+			endif 
 		endif
+        
+        ;Opens outer Lucky 38 door if player emerges from front door
+        if eval rLink == (GFFM "FalloutNV.esm" "13BB17") && !(VDialogueLucky38Entrance.L38EntranceOpen)
+            Lucky38EntranceDoorActor.SetOpenState 1
+            VDialogueLucky38Entrance.L38EntranceOpen = 1
+        endif
+        
+        ;Handles some top of HELIOS One variables
+        if eval rLink == VMS03DeckDoorREF
+            VMS03.bEnteredWastelandFromTower = 1
+        endif
+        if eval rDoor == VMS03DeckDoorREF
+            VMS03.bEnteredWastelandFromTower = 0
+        endif
 
 		array_var aDoorsUsed = GetArrayVar "aDoorsUsed" WRQuestStart
 		aDoorsUsed[rDoor.RefToString] = 1

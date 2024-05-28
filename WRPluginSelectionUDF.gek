@@ -1,9 +1,12 @@
 scn WRPluginSelectionUDF
 
 int iButton
+string_var sMenu
 
 begin function {iButton}
-;	print "WRPluginSelectionUDF button: " + $iButton
+	; print "WRPluginSelectionUDF button: " + $iButton
+    sMenu = AuxVarGetStr "*sMenu" 0 WRQuestStart
+    ; print "sMenu in UDF before: " + $sMenu
 
 	if eval iButton < (Ar_Size WRQuestStart.aOptions)
 		if eval WRQuestStart.aOptionsSelected[iButton]
@@ -15,12 +18,9 @@ begin function {iButton}
 			iButton = WRQuestStart.aOptions[iButton]
 			string_var sReplace = " " + GetModName iButton + "|* " + GetModName iButton
 		endif
-		string_var sMenu = WRQuestStart.sMenu
 		sv_replace $sReplace sMenu
-		WRQuestStart.sMenu = sMenu
 	elseif eval iButton == (Ar_Size WRQuestStart.aOptions)
 		int iIndex = -1
-		string_var sMenu = WRQuestStart.sMenu
 		while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
 			WRQuestStart.aOptionsSelected[iIndex] = 1
 			iButton = WRQuestStart.aOptions[iIndex]
@@ -29,17 +29,17 @@ begin function {iButton}
 			sReplace = " " + GetModName iButton + "|* " + GetModName iButton
 			sv_replace $sReplace sMenu
 		loop
-		WRQuestStart.sMenu = sMenu
 	else
 		WRQuestStart.iOptionSelecting = 2
         int iIndex = -1
-		string_var sMenu = WRQuestStart.sMenu
 		while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
-			WRQuestStart.aOptionsSelected[iIndex] = 1
 			iButton = WRQuestStart.aOptions[iIndex]
             string_var sReplace = "* " + GetModName iButton + "| " + GetModName iButton
 			sv_replace $sReplace sMenu
 		loop
-        WRQuestStart.sMenu = sMenu
 	endif
+    
+    ; print "sMenu in UDF after: " + $sMenu
+    AuxVarSetStr "*sMenu" $sMenu 0 WRQuestStart
+    ; print "sMenu in auxvar after: " + $(AuxVarGetStr "*sMenu" 0 WRQuestStart)
 end

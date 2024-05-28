@@ -7,4 +7,34 @@ begin function {rCell}
 
 	array_var aDoorsToReset = GetArrayVar "aDoorsToReset" WRQuestStart
 	Ar_Cat aDoorsToReset aDoors
+    
+    if eval rCell == Vault3a
+        ref rDoor = GFFM (GetNthModName (GetSelfModIndex)) "F877"
+        if eval rDoor.GetDisabled && WRQuestStart.aOptionsSelected[0]
+            rDoor.enable
+        elseif eval !(WRQuestStart.aOptionsSelected[0] || rDoor.GetDisabled)
+            rDoor.Disable
+        endif
+    elseif eval rCell == OVWestSewers03
+        ref rActivator1 = GFFM "FalloutNV.esm" "135AD1"
+        ref rActivator2 = GFFM "FalloutNV.esm" "135AD2"
+        ref rLockedDoor = GFFM "FalloutNV.esm" "134FD6"
+        if eval WRQuestStart.aOptionsSelected[0]
+            if eval !(rActivator1.GetDisabled)
+                rActivator1.Disable
+            endif
+            if eval !(rActivator2.GetDisabled)
+                rActivator2.Disable
+            endif
+            rLockedDoor.Unlock
+        else
+            if rActivator1.GetDisabled
+                rActivator1.enable
+            endif
+            if rActivator2.GetDisabled
+                rActivator2.enable
+            endif
+        else
+        endif
+    endif
 end

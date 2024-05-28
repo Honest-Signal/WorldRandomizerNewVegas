@@ -1,6 +1,7 @@
 scn WRSetDoorTeleportUDF
 
 ref fromDoor
+ref originalToDoor
 ref toDoor
 float fX
 float fY
@@ -9,58 +10,72 @@ float fRot
 
 begin function { toDoor }
 	ref rSelf = GetSelf
+    originalToDoor = toDoor
+    
 	string_var strFromDoor = GetFormIDString rSelf
 	string_var strToDoor = GetFormIDString toDoor
+    
+    if eval !(IsReference rSelf) || !(IsReference toDoor)
+        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| WARNING: Null door(s) in WRSetDoorTeleportUDF: Doors present: " + strFromDoor + " and " + strToDoor)
+        return
+    endif
 
 	int iModDoor = 0
-    int iYupIndex = Call WRGetYUPIndexUDF
+    int iModDoor2 = 0
 
 	;From door dealings
     if eval rSelf.gpw == GreenhouseWorld01
         fromDoor = call WRGetGreenHouseDoorUDF rSelf
-	elseif eval strFromDoor == "000F3C5F"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64ED"
-		endif
-	elseif eval strFromDoor == "0016A9B8"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EE"
-		endif
-	elseif eval strFromDoor == "000F3C5E"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EC"
-		endif
-	elseif eval strFromDoor == "0016A9B2"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EB"
-		endif
+	elseif eval strFromDoor == "000F3C5F" && WRQuestStart.iYUPIndex != -1
+		fromDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64ED"
+	elseif eval strFromDoor == "0016A9B8" && WRQuestStart.iYUPIndex != -1
+		fromDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64EE"
+	elseif eval strFromDoor == "000F3C5E" && WRQuestStart.iYUPIndex != -1
+		fromDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64EC"
+	elseif eval strFromDoor == "0016A9B2" && WRQuestStart.iYUPIndex != -1
+		fromDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64EB"
 	elseif eval strFromDoor == "00152C02" ;RSCharlieDoor
 		if rSelf.GetDisabled
-			let fromDoor := RSCharlieDoorDestroyed
+			fromDoor = RSCharlieDoorDestroyed
 		endif
 	elseif eval strFromDoor == "001093DB" ;NellisHangar1bDoor1
 		if rSelf.GetDisabled
-			let fromDoor := rSelf.GetParentRef ;NellisHangar1aDoor1
+			fromDoor = rSelf.GetParentRef ;NellisHangar1aDoor1
 		endif
 	elseif eval strFromDoor == "001093DC" ;Hangar1bDoor2
 		if rSelf.GetDisabled
-			let fromDoor := rSelf.GetParentRef ;Hangar1aDoor2
+			fromDoor = rSelf.GetParentRef ;Hangar1aDoor2
 		endif
+    elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "C47F" ;NVDLC04CouriersMileDoorREF
+        if eval rSelf.GetDisabled
+            iModDoor = 1
+        else
+            iModDoor = -1
+        endif
+    elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "B345"
+        ref rWarhead = GetFormFromMod "LonesomeRoad.esm" "8903" ;This door is blocked by a warhead.
+        if eval rWarhead.GetDisabled
+            iModDoor = -1
+        else
+            iModDoor = 1
+        endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "CB7D" ;NVDLC04Road02ToSilo02DoorREF
 		if rSelf.GetDisabled
-			let fromDoor := GetFormFromMod "LonesomeRoad.esm" "39F3" ;NVDLC04Silo2DoorREFDUPLICATE000 
+            rSelf.Enable
+            ref rOther = GetFormFromMod "LonesomeRoad.esm" "39F3" ;NVDLC04Silo2DoorREFDUPLICATE000 
+			rOther.disable 
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "CB7A" ;NVDLC04Silo02ToRoad02DoorREF
 		if rSelf.GetDisabled
-			let fromDoor := GetFormFromMod "LonesomeRoad.esm" "29AD" ;NVDLC04Silo02StartDoorREF
+			fromDoor = GetFormFromMod "LonesomeRoad.esm" "29AD" ;NVDLC04Silo02StartDoorREF
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "DCC2"
 		if rSelf.GetDisabled
-			let fromDoor := rSelf.GetParentRef ;TempleEntrance
+			fromDoor = rSelf.GetParentRef ;TempleEntrance
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && rSelf == GetFormFromMod "LonesomeRoad.esm" "DCC1"
 		if rSelf.GetDisabled
-			let fromDoor := rSelf.GetParentRef ;TempleExit
+			fromDoor = rSelf.GetParentRef ;TempleExit
 		endif
 	elseif eval strFromDoor == "00133931" ;VHDCheckpointExtDoorWestREF
 		if rSelf.GetDisabled
@@ -86,93 +101,105 @@ begin function { toDoor }
 		else
 			iModDoor = -1
 		endif
-    elseif eval rSelf.GetDestroyed
+    endif
+    if eval rSelf.GetDestroyed && rSelf != GSDocMitchellHouseIntDoorREF
         rSelf.AuxVarSetFlt "IsDestroyed" 1
-        iModDoor = 3
+        iModDoor = 1
     elseif eval (rSelf.AuxVarGetFlt "IsDestroyed") && !(rSelf.GetDestroyed)
         rSelf.AuxVarErase "IsDestroyed"
-        iModDoor = -3
+        iModDoor = -1
+	endif
+    
+    if fromDoor == 0
+		fromDoor = rSelf
+    elseif eval WRQuestStart.aDoorsUsed[rSelf.RefToString]
+        WRQuestStart.aDoorsUsed[fromDoor.RefToString] = WRQuestStart.aDoorsUsed[rSelf.RefToString]
 	endif
 
 	;====================================================================================
 	;To door dealings
 	if eval toDoor.gpw == GreenhouseWorld01
         toDoor = call WRGetGreenHouseDoorUDF toDoor
-	elseif eval strToDoor == "000F3C5F"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64ED"
-		endif
-	elseif eval strToDoor == "0016A9B8"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EE"
-		endif
-	elseif eval strToDoor == "000F3C5E"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EC"
-		endif
-	elseif eval strToDoor == "0016A9B2"
-		if eval iYUPIndex != -1
-			let fromDoor := GetFormFromMod (GetNthModName iYUPIndex) "64EB"
-		endif
+	elseif eval strToDoor == "000F3C5F" && WRQuestStart.iYUPIndex != -1
+		toDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64ED"
+	elseif eval strToDoor == "0016A9B8" && WRQuestStart.iYUPIndex != -1
+		toDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64EE"
+	elseif eval strToDoor == "000F3C5E" && WRQuestStart.iYUPIndex != -1
+		toDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64EC"
+	elseif eval strToDoor == "0016A9B2" && WRQuestStart.iYUPIndex != -1
+		toDoor = GetFormFromMod (GetNthModName WRQuestStart.iYUPIndex) "64EB"
 	elseif eval strToDoor == "00152C02" ;RSCharlieDoor
 		if toDoor.GetDisabled
-			let toDoor := RSCharlieDoorDestroyed
+			toDoor = RSCharlieDoorDestroyed
 		endif
 	elseif eval strToDoor == "001093DB" ;NellisHangar1bDoor1
 		if toDoor.GetDisabled
-			let toDoor := toDoor.GetParentRef ;NellisHangar1aDoor1
+			toDoor = toDoor.GetParentRef ;NellisHangar1aDoor1
 		endif
 	elseif eval strToDoor == "001093DC" ;Hangar1bDoor2
 		if toDoor.GetDisabled
-			let toDoor := toDoor.GetParentRef ;Hangar1aDoor2
+			toDoor = toDoor.GetParentRef ;Hangar1aDoor2
 		endif
+    elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "C47F" ;NVDLC04CouriersMileDoorREF
+        if eval toDoor.GetDisabled
+            iModDoor2 = 1
+        else
+            iModDoor2 = -1
+        endif
+    elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "B345"
+        ref rWarhead = GetFormFromMod "LonesomeRoad.esm" "8903" ;This door is blocked by a warhead.
+        if eval rWarhead.GetDisabled
+            iModDoor2 = -1
+        else
+            iModDoor2 = 1
+        endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "CB7D" ;NVDLC04Road02ToSilo02DoorREF
 		if toDoor.GetDisabled
-			let toDoor := GetFormFromMod "LonesomeRoad.esm" "39F3" ;NVDLC04Silo2DoorREFDUPLICATE000 
+            toDoor.enable
+			ref rOther = GetFormFromMod "LonesomeRoad.esm" "39F3" ;NVDLC04Silo2DoorREFDUPLICATE000 
+			rOther.disable
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "CB7A" ;NVDLC04Silo02ToRoad02DoorREF
 		if toDoor.GetDisabled
-			let toDoor := GetFormFromMod "LonesomeRoad.esm" "7876" ;NVDLC04Silo1ElevatorDoorStartREF
+			toDoor = GetFormFromMod "LonesomeRoad.esm" "7876" ;NVDLC04Silo1ElevatorDoorStartREF
             toDoor.call WRSetDoorTeleportUDF rSelf
             ; This effectively inserts the one-way lift into the randomizer.
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "DCC2"
 		if toDoor.GetDisabled
-			let toDoor := toDoor.GetParentRef ;TempleEntrance
+			toDoor = toDoor.GetParentRef ;TempleEntrance
 		endif
 	elseif eval IsModLoaded "LonesomeRoad.esm" && toDoor == GetFormFromMod "LonesomeRoad.esm" "DCC1"
 		if toDoor.GetDisabled
-			let toDoor := toDoor.GetParentRef ;TempleExit
+			toDoor = toDoor.GetParentRef ;TempleExit
 		endif
 	elseif eval strToDoor == "00133931" ;VHDCheckpointExtDoorWestREF
 		if toDoor.GetDisabled
-			iModDoor = 2
+			iModDoor2 = 1
 		else
-			iModDoor = -2
+			iModDoor2 = -1
 		endif
 	elseif eval strToDoor == "0013C8C9" ;VHDCheckpointEastDoor
 		if toDoor.GetDisabled
-			iModDoor = 2
+			iModDoor2 = 1
 		else
-			iModDoor = -2
+			iModDoor2 = -1
 		endif
 	elseif eval strToDoor == "00168DB5" ;v34NorthTeleportDoor
 		if toDoor.GetDisabled
-			iModDoor = 2
+			iModDoor2 = 1
 		else
-			iModDoor = -2
+			iModDoor2 = -1
 		endif
 	elseif eval strToDoor == "00136B5F" ;SVElevatorDoorVault
 		if eval GetObjectiveCompleted VMQ02 5 || ((GetObjectiveCompleted VMQHouse2 32) && (GetObjectiveCompleted VMQHouse2 34))
-			iModDoor = 2
+			iModDoor2 = 1
 		else
-			iModDoor = -2
+			iModDoor2 = -1
 		endif
 	endif
 
-	if fromDoor == 0
-		fromDoor = rSelf
-	endif
+	
 	;====================================================================================
 	;Modifying doors if necessary
 	array_var aPossiblyInaccessibleDoors = Ar_List VHDCheckpointExtDoorWestREF VHDCheckpointEastDoor v34NorthTeleportDoor
@@ -183,44 +210,45 @@ begin function { toDoor }
 	if eval (Ar_Find rFromDoorLink aPossiblyInaccessibleDoors) != Ar_BadNumericIndex
 		SetFormFlag fromDoor 256 0 ;Unsetting the inaccessibility
 	endif
-
-	if eval iModDoor == 1 || iModDoor == 3
+    
+    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| fromDoor " + fromDoor.RefToString + " has iModDoor " + $iModDoor)
+ 
+	if eval iModDoor > 0
 		SetFormFlag toDoor 256 1
-	elseif eval iModDoor == -1 || iModDoor == -3
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Made " + toDoor.RefToString + " inaccessible because of " + fromDoor.RefToString) 
+        toDoor.AuxVarSetRef "MadeInaccessible" fromDoor
+	elseif eval iModDoor < 0 || ((toDoor.AuxVarType "MadeInaccessible") && (toDoor.AuxVarGetRef "MadeInaccessible") != fromDoor)
 		SetFormFlag toDoor 256 0
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Unsetting " + toDoor.RefToString + " inaccessibility.")
+        toDoor.AuxVarErase "MadeInaccessible"
     endif
-	if eval iModDoor >= 2
+	if eval iModDoor2 > 0
 		SetFormFlag fromDoor 256 1
-	elseif eval iModDoor <= -2
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Made " + fromDoor.RefToString + " inaccessible because of " + toDoor.RefToString)
+        fromDoor.AuxVarSetRef "MadeInaccessible" toDoor
+	elseif eval iModDoor2 < 0 || ((fromDoor.AuxVarType "MadeInaccessible") && (fromDoor.AuxVarGetRef "MadeInaccessible") != toDoor)
 		SetFormFlag fromDoor 256 0
+        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Unsetting " + fromDoor.RefToString + " inaccessibility.")
+        fromDoor.AuxVarErase "MadeInaccessible"
 	endif
 	;====================================================================================
 	;Changing door prompts
 	int bObscure = GetVariable "bObscure" WRQuestStart
 	if fromDoor.GetRefActivationPromptOverride || bObscure == 1
-		ref rOldCell
-		ref rNewCell
+		string_var sOldCell
+		string_var sNewCell
 	
 		if toDoor == 0
 			Print "toDoor is 0, rSelf: " + GetFormIdString fromDoor
 		endif
 	
-		if IsFormValid (fromDoor.GetTeleportDoor.gpc)
-			rOldCell= fromDoor.GetTeleportDoor.gpc
-		else
-			rOldCell= fromDoor.GetTeleportDoor.gpw
-		endif
+		sOldCell = fromDoor.GetTeleportDoor.GetLocationName
 	
-		if IsFormValid (toDoor.gpc)
-			rNewCell= toDoor.gpc
-		else
-			rNewCell= toDoor.gpw
-		endif
-		string_var sDestination = $rNewCell
+		sNewCell = toDoor.GetLocationName
 		
 		if bObscure == 1
 			if eval WRQuestStart.aDoorsUsed[rSelf.RefToString] == 0 && WRQuestStart.aDoorsUsed[fromDoor.RefToString] == 0
-				sDestination = "???"
+				sNewCell = "???"
 			endif
 		endif
 		
@@ -232,16 +260,16 @@ begin function { toDoor }
 		;print "rOldCell: " + $rOldCell + " sOldActivation: " + $sOldActivation
 		;print "sv_find rOldCell: " + $(sv_find ($rOldCell) sOldActivation)
 		;print "sv_find ???: " + $(sv_find "???" sOldActivation) 
-		if (sv_find ($rOldCell) sOldActivation) > -1
-			string_var sReplace = $rOldCell + "|" + sDestination
+		if (sv_find (sOldCell) sOldActivation) > -1
+			string_var sReplace = sOldCell + "|" + sNewCell
 			sv_replace $sReplace sOldActivation
 			fromDoor.SetRefActivationPromptOverride $sOldActivation
 		elseif (sv_find "???" sOldActivation) > -1
-			string_var sReplace = "???|" + sDestination
+			string_var sReplace = "???|" + sNewCell
 			sv_replace $sReplace sOldActivation
 			fromDoor.SetRefActivationPromptOverride $sOldActivation
 		else
-			string_var sActivation = "Enter " + sDestination
+			string_var sActivation = "Enter " + sNewCell
 			fromDoor.SetRefActivationPromptOverride $sActivation
 		endif
 		;print "New activation prompt: " + $fromDoor.GetRefActivationPromptOverride
@@ -268,9 +296,14 @@ begin function { toDoor }
 		fromDoor.SetDoorTeleport toDoor fX fY fZ fRot
 ;       PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| fromDoor: " + fromDoor.RefToString + " link: " + fromDoor.GetTeleportDoor.RefToString + " toDoor: " + toDoor.RefToString)
 		if eval rSelf != fromDoor
-			rSelf.SetDoorTeleport toDoor fX fY fZ fRot
+            if eval originalToDoor != toDoor
+                rSelf.SetDoorTeleport originalToDoor
+            else
+                rSelf.SetDoorTeleport toDoor fX fY fZ fRot
+            endif
 		endif
 	loop
+    SetFunctionValue 1
     
 	; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set door " + fromDoor.RefToString + " to " + toDoor.RefToString )
 end

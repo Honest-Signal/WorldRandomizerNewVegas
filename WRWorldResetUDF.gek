@@ -23,6 +23,14 @@ begin function { }
 			rLink.SetDoorTeleport rDoor fX fY fZ fRot
 		loop
         
+        if eval (rDoor.AuxVarGetFlt "MadeInaccessible")
+            SetFormFlag rDoor 256 0
+            rDoor.AuxVarErase "MadeInaccessible"
+        endif
+        
         aEntry = RefMapNext "*aAllDoors"
 	loop
+    if eval !(WRQuestStart.iSetShuffle)
+        RemoveModLocalData "fCurrentLoadedRandom"
+    endif
 end

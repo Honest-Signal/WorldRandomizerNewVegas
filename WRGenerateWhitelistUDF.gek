@@ -3,11 +3,21 @@ scn WRGenerateWhitelistUDF
 ; This function generates an array of doors that shouldn't be included in randomization. 
 ; It's a script so that the mod can run without requiring every DLC or other mod necessarily.
 ; Doors can be added via the formlist WRWhitelistedDoors without recompiling this script (you might want this for an unsupported mod, for instance)
+; WRUnusableDoors refers to doors that are unreachable, and so should be ignored by WRIsConnectedToWorldspaceUDF.
 ; FalloutNV.esm's whitelist is in the formlist by default.
 
 begin function { }
 
-	array_var aWhitelist = GetListForms WRWhitelistedDoors
+    if eval WRQuestStart.iYupIndex == -1
+        ref rThisOneDoor = GFFM "FalloutNV.esm" "176A35" ;By default this door is unusable. YUP fixes it
+        ListAddForm WRUnusableDoors rThisOneDoor
+    endif
+
+	array_var aWhitelist = GetListForms WRWhitelistedDoors 
+    array_var aUnreachables = GetListForms WRUnusableDoors
+    Ar_Cat aWhitelist aUnreachables
+    array_var aIsolatedExteriors = Ar_Construct "Stringmap"
+    array_var aIsolatedInteriors = Ar_Construct "Stringmap"
 	
 	int iIndex = -1
 	while (iIndex += 1) < (Ar_Size WRQuestStart.aOptions)
@@ -30,13 +40,236 @@ begin function { }
 				Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "29AD")	;NVDLC04Silo02StartDoorREF -- CB7A switches to this if disabled
                 Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "7876")   ;NVDLC04Silo1ElevatorDoorStartREF -- These two are part of a
                 Ar_Append aWhitelist (GFFM "LonesomeRoad.esm" "7877")   ;NVDLC04Silo1ElevatorDoorEndREF -- one-way tunnel.
-			elseif eval sModName == "OldWorldBlues.esm"
-				ListAddForm WRProblemDoors (GFFM "OldWorldBlues.esm" "38C9") ;Sink balcony door, because it's a one-way
+			; elseif eval sModName == "OldWorldBlues.esm"
 			endif
 ;========WHITELIST ENDS... FOR NOW
 
 		endif
 	loop
+    
+; This section exists to handle a number of either: Exterior doors that are not actually connected to the rest of the worldspace.
+; Key: Door in question | Value: Nonzero group integer.
+; Or interior doors that are not actually connected to the rest of the cell. (Or cells where every door is unconnected.)
+; Key: Door OR cell | Value: -1 for entire cell, nonzero group integer otherwise
+;========ISOLATED DOORS BEGINS
+    int iGroupNum = 0
+    if eval WRQuestStart.aOptionsSelected[0]
+        ;Bottom of dam south
+        let aIsolatedExteriors["FalloutNV.esm:135A5B"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:135AA5"] := iGroupNum
+        ;Top of main center
+        let aIsolatedExteriors["FalloutNV.esm:1324AE"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:164C63"] := iGroupNum
+        ;Top of tower 1
+        let aIsolatedExteriors["FalloutNV.esm:131563"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:164C66"] := iGroupNum
+        ;Top of tower 2
+        let aIsolatedExteriors["FalloutNV.esm:131562"] := (iGroupNum += 1)
+        ;Top of checkpoint
+        let aIsolatedExteriors["FalloutNV.esm:13C8C7"] := (iGroupNum += 1)
+        ;Top of tower 3
+        let aIsolatedExteriors["FalloutNV.esm:131561"] := (iGroupNum += 1)
+        ;Bottom of dam north
+        let aIsolatedExteriors["FalloutNV.esm:169532"] := (iGroupNum += 1)
+        ;East side of dam
+        let aIsolatedExteriors["FalloutNV.esm:13C8C9"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:131565"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:135E5C"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:135E5D"] := iGroupNum
+        ;GamorrahWorld (Pool)
+        let aIsolatedExteriors["FalloutNV.esm:12958E"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:12958F"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:129590"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:129591"] := iGroupNum
+        ;GamorrahWorld (Courtyard)
+        let aIsolatedExteriors["FalloutNV.esm:11246E"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:1263A2"] := iGroupNum
+        ;Novac dino door
+        let aIsolatedExteriors["FalloutNV.esm:14EDE2"] := (iGroupNum += 1)
+        ;Top porch Jacobstown lodge
+        let aIsolatedExteriors["FalloutNV.esm:13D7FB"] := (iGroupNum += 1)
+        ;Camp Golf top side porch
+        let aIsolatedExteriors["FalloutNV.esm:106A89"] := (iGroupNum += 1)
+        ;Top REPCONN test site
+        let aIsolatedExteriors["FalloutNV.esm:8CD92"] := (iGroupNum += 1)
+        ;Top of HELIOS One
+        if eval (WRQuestStart.aOptionsSelected[0]) ;Idk where to put this but fuck this door. It's unlocked by proximity activator??
+            VMS03DeckDoorREF.unlock
+        endif
+        let aIsolatedExteriors["FalloutNV.esm:E2C54"] := (iGroupNum += 1)
+        ;Back of HELIOS One
+        let aIsolatedExteriors["FalloutNV.esm:D80B2"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:E2C53"] := iGroupNum
+        ;WastelandNVmini -- Crimson Caravan
+        let aIsolatedExteriors["FalloutNV.esm:159F59"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:F3C5F"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:FEB39"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:F5EA9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:FD56F"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:159F4A"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:16A9B8"] := iGroupNum
+        ;WastelandNVmini -- North Vegas
+        let aIsolatedExteriors["FalloutNV.esm:15A310"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:12FFF9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:15C3EF"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:166D1B"] := iGroupNum
+        ;WastelandNVmini -- Westside
+        let aIsolatedExteriors["FalloutNV.esm:15A079"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:F18CD"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:F14A4"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:1381AB"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:FA253"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:F18B9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13003C"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:15A1C4"] := iGroupNum
+        ;WastelandNVmini -- Aerotech Office Park
+        let aIsolatedExteriors["FalloutNV.esm:E5E06"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:15E639"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:173AF9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:E8A79"] := iGroupNum
+        ;WastelandNVmini -- Camp McCarran (front)
+        let aIsolatedExteriors["FalloutNV.esm:1287F8"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:127EB8"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127EB9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127EBA"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127ED2"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127ECD"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127ED1"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127ECE"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127ECF"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:127ED0"] := iGroupNum
+        ;WastelandNVmini -- Camp McCarran (back)
+        let aIsolatedExteriors["FalloutNV.esm:FB119"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:FDA90"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:176A36"] := iGroupNum ;176A35 should be whitelisted
+        let aIsolatedExteriors["FalloutNV.esm:F6284"] := iGroupNum
+        ;WastelandNVmini -- Camp McCarran (back tower)
+        let aIsolatedExteriors["FalloutNV.esm:F6285"] := (iGroupNum += 1)
+        ;WastelandNVmini -- South Vegas Ruins
+        let aIsolatedExteriors["FalloutNV.esm:F26FD"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:15D1B9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:15D1CC"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:15D20B"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:FD2F3"] := iGroupNum
+        ;Strip -- Gomorrah & Lucky 38
+        let aIsolatedExteriors["FalloutNV.esm:16A14D"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:13BB08"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BB1D"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BB17"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BB0D"] := iGroupNum
+        ;Strip -- Tops & Ultraluxe
+        let aIsolatedExteriors["FalloutNV.esm:16A14E"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:13BB15"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BABC"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BABD"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BABE"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BABF"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BABE"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BAD9"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BADA"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BADB"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BADC"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BADD"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BADE"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BADF"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BAE0"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:16A14F"] := iGroupNum
+        ;Strip -- NCR Embassy & Vault 21
+        let aIsolatedExteriors["FalloutNV.esm:16A150"] := (iGroupNum += 1)
+        let aIsolatedExteriors["FalloutNV.esm:13BB0B"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BB0E"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BB0F"] := iGroupNum
+        let aIsolatedExteriors["FalloutNV.esm:13BB13"] := iGroupNum
+    endif
+    if eval IsModLoaded "DeadMoney.esm" && WRQuestStart.aOptionsSelected[(Ar_Find (GetModIndex "DeadMoney.esm") WRQuestStart.aOptions)]
+        ;Unreachable doors in Puesta Del Sol North
+        let aIsolatedExteriors["DeadMoney.esm:5B2F"] := (iGroupNum += 1)
+        let aIsolatedExteriors["DeadMoney.esm:5B37"] := (iGroupNum += 1)
+        ;Unreachable doors in Puesta Del Sol South
+        let aIsolatedExteriors["DeadMoney.esm:6F0F"] := (iGroupNum += 1)
+        let aIsolatedExteriors["DeadMoney.esm:BFB1"] := iGroupNum ;parkour!
+        let aIsolatedExteriors["DeadMoney.esm:BFB2"] := (iGroupNum += 1)
+        ;Unreachable doors in Salida Del Sol North
+        let aIsolatedExteriors["DeadMoney.esm:C604"] := (iGroupNum += 1)
+        let aIsolatedExteriors["DeadMoney.esm:B13B"] := (iGroupNum += 1)
+        ;These two are fine but important to acknowledge they can't reach the other two (technically b13b, but...)
+        let aIsolatedExteriors["DeadMoney.esm:B480"] := (iGroupNum += 1)
+        let aIsolatedExteriors["DeadMoney.esm:C603"] := iGroupNum
+        
+    endif
+    if eval IsModLoaded "OldWorldBlues.esm" && WRQuestStart.aOptionsSelected[(Ar_Find (GetModIndex "OldWorldBlues.esm") WRQuestStart.aOptions)]
+        ;Sink balcony door
+        let aIsolatedExteriors["OldWorldBlues.esm:38C9"] := (iGroupNum += 1)
+    endif
+    if eval IsModLoaded "LonesomeRoad.esm" && WRQuestStart.aOptionsSelected[(Ar_Find (GetModIndex "LonesomeRoad.esm") WRQuestStart.aOptions)]
+        ;Door from Collapsed Overpass Tunnel (NVDLC04Road01World)
+        let aIsolatedExteriors["LonesomeRoad.esm:39EE"] := (iGroupNum += 1)
+        ;NVDLC04DivideWorld
+        ;Door in Cave of the Abaddon
+        let aIsolatedExteriors["LonesomeRoad.esm:308D"] := (iGroupNum += 1)
+        ;High sewer grate in section 1
+        let aIsolatedExteriors["LonesomeRoad.esm:7954"] := (iGroupNum += 1)
+        ;Sewer grate behind warheads in section 1
+        let aIsolatedExteriors["LonesomeRoad.esm:7955"] := (iGroupNum += 1)
+        ;Door from Sunstone Tower
+        let aIsolatedExteriors["LonesomeRoad.esm:3058"] := (iGroupNum += 1)
+        ;Section 2
+        let aIsolatedExteriors["LonesomeRoad.esm:3183"] := (iGroupNum += 1)
+        let aIsolatedExteriors["LonesomeRoad.esm:A1AC"] := iGroupNum
+        let aIsolatedExteriors["LonesomeRoad.esm:4D2E"] := iGroupNum
+    endif
+    
+    
+    int iPrevNum = -1
+    array_var aImport = GetINISection "IsolatedExteriors"
+    foreach (array_var aEntry) <- aImport
+        int iValue = #(*aEntry)
+        if eval iValue != iPrevNum
+            iPrevNum = iValue
+            iGroupNum += 1
+            aIsolatedExteriors[aEntry["Key"]] = iGroupNum
+        else
+            aIsolatedExteriors[aEntry["Key"]] = iGroupNum
+        endif
+    loop
+    ; SetINISection "aIsolatedExteriors" aIsolatedExteriors
+    
+    iGroupNum = 0
+    if eval WRQuestStart.aOptionsSelected[0]
+        ;Vault34c
+        let aIsolatedInteriors["FalloutNV.esm:138A9E"] := -1
+        ;CampGuardianCaves2 lower entrance-- because there's a drop-down
+        let aIsolatedInteriors["FalloutNV.esm:13F31F"] := (iGroupNum += 1)
+        ;Vault34a
+        ;Should probably just whitelist this one FalloutNV.esm:13E41D
+        ;2CCampGolfTents2
+        let aIsolatedInteriors["FalloutNV.esm:1551BD"] := -1
+        ;2CCampGolfTents
+        let aIsolatedInteriors["FalloutNV.esm:1551BE"] := -1
+        ;SLBeerBootleggerINT
+        let aIsolatedInteriors["FalloutNV.esm:1544C0"] := (iGroupNum += 1)
+        let aIsolatedInteriors["FalloutNV.esm:1544C1"] := (iGroupNum += 1)
+        let aIsolatedInteriors["FalloutNV.esm:1544BF"] := iGroupNum
+    endif
+    
+    iPrevNum = -2
+    aImport = GetINISection "IsolatedInteriors"
+    foreach (array_var aEntry) <- aImport
+        int iValue = #(*aEntry)
+        if eval iValue == -1
+            aIsolatedInteriors[aEntry["Key"]] = -1
+        elseif eval iValue != iPrevNum
+            iPrevNum = iValue
+            iGroupNum += 1
+            aIsolatedInteriors[aEntry["Key"]] = iGroupNum
+        else
+            aIsolatedInteriors[aEntry["Key"]] = iGroupNum
+        endif
+    loop
+    
+;========ISOLATED DOORS ENDS... FOR NOW
 
 	WRQuestStart.aWhitelist = aWhitelist
+    WRQuestStart.aIsolatedExteriors = aIsolatedExteriors
+    WRQuestStart.aIsolatedInteriors = aIsolatedInteriors
 end
