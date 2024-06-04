@@ -229,6 +229,9 @@ begin gamemode
 				iOptionSelecting = 2
 				;Call WRWorldResetUDF
 				Call WRReadaShuffleFromFileUDF
+                SetModLocalData "fCurrentLoadedRandom" fID
+                iSetShuffle = 1
+                fID = rand 0 100
 			else
 				MessageExAlt 5 "#0|WorldRandomizer - There are no doors to import!"
 				PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| No doors found from RandomizedWorld.ini." )
@@ -696,7 +699,11 @@ begin gamemode
 
 		if eval (bObscure = GetButtonPressed) != -1
 			PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door activation prompt obscuring: " + $bObscure)
-			iOptionSelecting = 4
+            if iSetShuffle
+                iOptionSelecting = 99
+            else
+                iOptionSelecting = 4
+            endif
 		endif
 	elseif eval iOptionSelecting == 4
         MessageBoxEx "Note: Randomization can take anywhere from less than a minute to about 4 minutes, depending on mods. It is advised you don't travel through doors during it (they may rerandomize behind you). Also, don't open any menus or processing will pause."
