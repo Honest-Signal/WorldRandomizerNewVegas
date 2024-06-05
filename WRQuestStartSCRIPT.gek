@@ -35,6 +35,7 @@ int iSize
 int iStartEvents
 int iTest
 int iTimer
+int iTry
 int iVersions
 int iYUPIndex
 ref rDoor
@@ -398,20 +399,30 @@ begin gamemode
             ; iRandomize = 0
             while (iThread += 1) < 4
                 string_var sThread = "*Thread" + $iThread
-                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread: " + $iThread + " Thread sizes: " + $(AuxVarSize "*Thread1" WRQuestStart) + " " + $(AuxVarSize "*Thread2" WRQuestStart) + " " + $(AuxVarSize "*Thread3" WRQuestStart) + " " + $(AuxVarSize "*Thread4" WRQuestStart))
+                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread: " + $iThread + " Thread sizes: " + $(AuxVarSize "*Thread0" WRQuestStart) + " " + $(AuxVarSize "*Thread1" WRQuestStart) + " " + $(AuxVarSize "*Thread2" WRQuestStart) + " " + $(AuxVarSize "*Thread3" WRQuestStart))
                 
                 if eval (AuxVarType (sThread+"busy") 0 WRQuestStart)
                     ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " is busy.")
                     continue ;Great, the thread is currently working so we can move to the next one
-                elseif eval (AuxVarSize $sThread WRQuestStart) > 0 || ((AuxVarSize $sThread WRQuestStart) == 0 && iIndex < (Ar_Size aDoors) && (Ar_Find aDoors[iIndex] aThreads) == Ar_BadNumericIndex)
+                elseif eval (AuxVarSize $sThread WRQuestStart) > 0 || ((AuxVarSize $sThread WRQuestStart) == 0 && iIndex < (Ar_Size aDoors))
                     if eval (AuxVarSize $sThread WRQuestStart) > 0 ;This thread just needs to keep working on its existing index
+                        if eval (Ar_Find aDoors[(AuxVarGetFlt $sThread 0 WRQuestStart)] aThreads) == Ar_BadNumericIndex
+                            Ar_Append aThreads aDoors[(AuxVarGetFlt $sThread 0 WRQuestStart)]
+                        elseif eval (AuxVarSize $sThread WRQuestStart) == 1 ;Not free yet
+                            continue
+                        endif
                         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " called again.")
-                    else
+                    else 
                         AuxVarSetFlt $sThread iIndex 0 WRQuestStart ;Initialize the thread, so to speak
-                        Ar_Append aThreads aDoors[iIndex]
                         aRand = Ar_Range 0 (Ar_Size aDoors)-1
                         AuxVarSetFromArr (sThread+"rand") aRand WRQuestStart
                         iIndex += 1
+                        ;Index may already be in thread, but we should get it and move on anyway
+                        if eval (Ar_Find aDoors[iIndex-1] aThreads) != Ar_BadNumericIndex
+                            continue
+                        else
+                            Ar_Append aThreads aDoors[iIndex-1]
+                        endif
                         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThread " + $iThread + " initialized.")
                     endif
                     
@@ -482,14 +493,10 @@ begin gamemode
                         endif
                         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") About to test " + rEdge2.RefToString + " and " + rEdge2Link.RefToString)
                         while ((bBreakLoop = rEdge2.call WRAreParentsDifferentUDF rEdge2Link) == -1)
-                            if eval !(rEdge2Link)
-                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " rEdge2Link doesn't exist for some reason??")
-                                break
-                            elseif eval !(rEdge2)
-                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " rEdge2 doesn't exist for some reason??")
-                                break
-                            else
-                                ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " Something ELSE is wrong with the first AreParentsDifferent so we're gonna wait a bit.")
+                             if eval (iTry += 1) > 10
+                                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + GetFormIDString rEdge2 + " call WRAreParentsDifferentUDF " + GetFormIDString rEdge2Link + " failed.")
+                                iTry = 0
+                                bBreakLoop = 0
                                 break
                             endif
                         loop
@@ -499,15 +506,30 @@ begin gamemode
                             Ar_Erase aThreads (Ar_Find rEdge2Link aThreads)
                             AuxVarErase $sThread 3 WRQuestStart
                             AuxVarErase $sThread 2 WRQuestStart
+                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| aRand size: " + $(Ar_Size aRand))
                         endif
                     loop
                     
                     
                     ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door2: " + rEdge2.RefToString + " Link2: " + rEdge2Link.RefToString)
-                    while ((bBreakLoop = rEdge1.call WRAreParentsDifferentUDF rEdge2Link) == -1) 
-                    loop
                     if eval bBreakLoop
-                        while((bBreakLoop = rEdge2.call WRAreParentsDifferentUDF rEdge1Link) == -1) 
+                        while ((bBreakLoop = rEdge1.call WRAreParentsDifferentUDF rEdge2Link) == -1)
+                            if eval (iTry += 1) > 10
+                                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + GetFormIDString rEdge1 + " call WRAreParentsDifferentUDF " + GetFormIDString rEdge2Link + " failed.")
+                                iTry = 0
+                                bBreakLoop = 0
+                                break
+                            endif
+                        loop
+                    endif
+                    if eval bBreakLoop
+                        while((bBreakLoop = rEdge2.call WRAreParentsDifferentUDF rEdge1Link) == -1)
+                            if eval (iTry += 1) > 10
+                                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| " + GetFormIDString rEdge2 + " call WRAreParentsDifferentUDF " + GetFormIDString rEdge1Link + " failed.")
+                                iTry = 0
+                                bBreakLoop = 0
+                                break
+                            endif
                         loop
                     endif
                     
@@ -570,14 +592,15 @@ begin gamemode
                             loop
                             
                             iLoops += 1
-                            if eval (Ar_Size aRand) < 1 || iLoops > 500 ;Welp, we're done here.
-                                bDone = 1
-                                PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
-                            endif
                         endif
                     endif
                     
-                    if bDone
+                    
+                    if eval ((Ar_Size aRand) < 1 || iLoops > 500) && !(bDone) ;Welp, we're done here.
+                        bDone = 1
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Skipping problematic door: " + rEdge1.RefToString)
+                    endif
+                    if eval bDone
                         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " done.")
                         iCount += 1
                         rEdge1.RefMapErase "*iLoops"
