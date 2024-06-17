@@ -458,7 +458,7 @@ begin gamemode
                     else
                         rEdge1Link = AuxVarGetRef $sThread 1 WRQuestStart
                     endif
-                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThreadIndex: " + $iThreadIndex + " Door: " + rEdge1.RefToString + " aRand size: " + $(Ar_Size aRand))
+                    ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| iThreadIndex: " + $iThreadIndex + " Door1: " + rEdge1.RefToString + " Link1: " + rEdge1Link.RefToString + " aRand size: " + $(Ar_Size aRand))
                     
                     while !(bBreakLoop) && (Ar_Size aRand) > 0
                         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Thread " + $iThread + " (size " + $(AuxVarSize $sThread WRQuestStart) + ") choosing rEdge2.")
@@ -534,16 +534,16 @@ begin gamemode
                     endif
                     
                     if eval bBreakLoop
-                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + " -> rEdge2Link: " + rEdge2Link.RefToString)
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1: " + rEdge1.RefToString + " -> rEdge2Link: " + rEdge2Link.RefToString)
                         while !(rEdge1.call WRSetDoorTeleportUDF rEdge2Link) 
                         loop
-                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2Link: " + rEdge2Link.RefToString + " -> rEdge1: " + rEdge1.RefToString)
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2Link: " + rEdge2Link.RefToString + " -> rEdge1: " + rEdge1.RefToString)
                         while !(rEdge2Link.call WRSetDoorTeleportUDF rEdge1) 
                         loop
-                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + " -> rEdge1Link: " + rEdge1Link.RefToString)
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge2: " + rEdge2.RefToString + " -> rEdge1Link: " + rEdge1Link.RefToString)
                         while !(rEdge2.call WRSetDoorTeleportUDF rEdge1Link) 
                         loop
-                        ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1Link: " + rEdge1Link.RefToString + " -> rEdge2: " + rEdge2.RefToString)
+                        PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| rEdge1Link: " + rEdge1Link.RefToString + " -> rEdge2: " + rEdge2.RefToString)
                         while !(rEdge1Link.call WRSetDoorTeleportUDF rEdge2) 
                         loop
                         ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| edge1 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge1) + " edge2 connection: " + $(call WRIsConnectedToWorldspaceUDF rEdge2))
@@ -574,8 +574,8 @@ begin gamemode
                             if eval (Ar_Find rEdge2Link aDoors) == Ar_BadNumericIndex
                                 ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Warning: " + rEdge2Link.RefToString + ", now linking to " + rEdge1.RefToString + ", formerly to " + rEdge2.RefToString + ", is possibly whitelisted.")
                             endif
-                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge1.RefToString + " <-> " + rEdge2Link.RefToString)
-                            ; PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge2.RefToString + " <-> " + rEdge1Link.RefToString)
+                            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge1.RefToString + " <-> " + rEdge2Link.RefToString)
+                            PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Set " + rEdge2.RefToString + " <-> " + rEdge1Link.RefToString)
                             
                             if eval iLoops > 100
                                 PrintF "WRLog.txt" $((call WRGetTimeStampUDF) + "| Door " + rEdge1.RefToString + " took " + $iLoops + " loops.")
